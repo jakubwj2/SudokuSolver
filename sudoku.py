@@ -8,7 +8,7 @@ class Table:
     def __init__(self, array=None, empty=" "):
         self.sudoku_array = np.array(array) if array is not None else np.zeros((9, 9))
         self.empty = empty
-        self.notes = np.ndarray((9, 9), dtype=list)
+        self.candidates = np.ndarray((9, 9), dtype=list)
         self.original_array = np.array(self.sudoku_array)
 
     def is_empty(self, row_idx: int, column_idx: int) -> bool:
@@ -24,166 +24,103 @@ class Table:
                 "Cannot place value in a filled cell", value, row_idx, column_idx
             )
 
-    # def fill_subsection(
-    #     self,
-    #     value: int,
-    #     subsection_row_idx: int,
-    #     subsection_column_idx: int,
-    #     force: bool = False,
-    # ) -> None:
-    #     for i in range(3):
-    #         for j in range(3):
-    #             self.place(
-    #                 value,
-    #                 subsection_row_idx * 3 + i,
-    #                 subsection_column_idx * 3 + j,
-    #                 force,
-    #             )
-
-    # def fill_row(self, value: int, row_idx: int, force: bool = False) -> None:
-    #     for i in range(9):
-    #         self.place(value, row_idx, i, force)
-
-    # def fill_column(self, value: int, column_idx: int, force: bool = False) -> None:
-    #     for i in range(9):
-    #         self.place(value, i, column_idx, force)
-
-    def check_section(self, value: int, x: int, y: int) -> bool:
-        return bool(np.all(self.get_section(self.sudoku_array, x, y) != value))
-
     def get_section_by_idx(self, array: np.ndarray, idx: int) -> np.ndarray:
         return self.get_section(array, idx // 3, idx % 3)
 
     def get_section(self, array: np.ndarray, x: int, y: int) -> np.ndarray:
         return array[x * 3 : (x + 1) * 3, y * 3 : (y + 1) * 3]
 
-    def check_row(self, value: int, row_idx: int) -> bool:
-        return bool(np.all(self.sudoku_array[row_idx, :] != value))
-
-    def check_column(self, value: int, column_idx: int) -> bool:
-        return bool(np.all(self.sudoku_array[:, column_idx] != value))
-
-    def check_placeable(self, value: int, row_idx: int, column_idx: int) -> bool:
+    def check_placeable(self, number: int, row_idx: int, column_idx: int) -> bool:
         return (
             self.is_empty(row_idx, column_idx)
-            and self.check_row(value, row_idx)
-            and self.check_column(value, column_idx)
-            and self.check_section(value, row_idx // 3, column_idx // 3)
+            and np.all(self.sudoku_array[row_idx, :] != number)
+            and np.all(self.sudoku_array[:, column_idx] != number)
+            and np.all(
+                self.get_section(self.sudoku_array, row_idx // 3, column_idx // 3)
+                != number
+            )
         )
 
-    def placeable_coords_generator(self, value: int) -> Iterator[tuple]:
-        for x, y in product(range(9), range(9)):
-            if self.check_placeable(value, x, y):
-                yield (x, y)
-
-    def write_all_notes(self) -> None:
-        self.notes.fill(None)
+    def gen_candidates(self) -> None:
+        self.candidates.fill(None)
         for number, x, y in product(range(1, 10), range(9), range(9)):
             if self.check_placeable(number, x, y):
-                if self.notes[x, y] is None:
-                    self.notes[x, y] = [number]
+                if self.candidates[x, y] is None:
+                    self.candidates[x, y] = [number]
                 else:
-                    self.notes[x, y].append(number)
+                    self.candidates[x, y].append(number)
 
-    def filter_notes(self):
+    def filter_candidates(self):
         for number in range(1, 10):
-            number_in_notes = np.zeros((9, 9), dtype=np.int64)
-            rows = np.zeros((9, 3))
-            columns = np.zeros((9, 3))
+            number_in_candidates = np.zeros((9, 9), dtype=np.int64)
+            in_row = np.zeros((9, 3))
+            in_column = np.zeros((9, 3))
 
             for x, y in product(range(9), range(9)):
-                number_in_notes[x, y] = self.notes_contain(number, x, y)
+                number_in_candidates[x, y] = self.candidates_contain(number, x, y)
 
             for idx in range(9):
-                section = self.get_section_by_idx(number_in_notes, idx)
-                rows[idx] = np.any(section, axis=1)
-                columns[idx] = np.any(section, axis=0)
+                section = self.get_section_by_idx(number_in_candidates, idx)
+                in_row[idx] = np.any(section, axis=1)
+                in_column[idx] = np.any(section, axis=0)
 
             for x, y in product(range(3), range(3)):
-                if sum(rows[x * 3 + y]) == 1:
-                    replace_x = rows[x * 3 + y].nonzero()[0]
-                    for section in [
-                        self.get_section(self.notes, x, i) for i in range(3) if i != y
-                    ]:
-                        for i in range(3):
-                            cell_notes = section[replace_x, i][0]
-                            if cell_notes is not None and number in cell_notes:
-                                cell_notes.remove(number)
+                if sum(in_row[x * 3 + y]) == 1:
+                    replace_x = in_row[x * 3 + y].nonzero()[0]
+                    for i in range(3):
+                        if i != y:
+                            section = self.get_section(self.candidates, x, i)
+                            self.remove_candidate_from_cells(number, section[replace_x])
 
-                if sum(columns[x * 3 + y]) == 1:
-                    replace_y = columns[x * 3 + y].nonzero()[0]
-                    for section in [
-                        self.get_section(self.notes, i, y) for i in range(3) if i != x
-                    ]:
-                        for i in range(3):
-                            cell_notes = section[i, replace_y][0]
-                            if cell_notes is not None and number in cell_notes:
-                                cell_notes.remove(number)
+                if sum(in_column[x * 3 + y]) == 1:
+                    replace_y = in_column[x * 3 + y].nonzero()[0]
+                    for i in range(3):
+                        if i != x:
+                            section = self.get_section(self.candidates, i, y)
+                            self.remove_candidate_from_cells(
+                                number, section[:, replace_y]
+                            )
 
-            for x in range(3):
-                row1 = rows[x * 3]
-                row2 = rows[x * 3 + 1]
-                row3 = rows[x * 3 + 2]
-                if sum(row1) + sum(row2) == 4 and all(row1 == row2):
-                    subsection = self.get_section_by_idx(self.notes, x * 3 + 2)
-                    for subsection_row in range(3):
-                        if row1[subsection_row]:
-                            for cell in subsection[subsection_row, :]:
-                                if cell and number in cell:
-                                    cell.remove(number)
+            for i in range(3):
+                col1 = i
+                col2 = 3 + i
+                col3 = 6 + i
 
-                if sum(row2) + sum(row3) == 4 and all(row2 == row3):
-                    subsection = self.get_section_by_idx(self.notes, x * 3)
-                    for subsection_row in range(3):
-                        if row2[subsection_row]:
-                            for cell in subsection[subsection_row, :]:
-                                if cell and number in cell:
-                                    cell.remove(number)
+                self.xwing(number, col1, col2, col3, in_column, True)
+                self.xwing(number, col2, col3, col1, in_column, True)
+                self.xwing(number, col1, col3, col2, in_column, True)
 
-                if sum(row1) + sum(row3) == 4 and all(row1 == row3):
-                    subsection = self.get_section_by_idx(self.notes, x * 3 + 1)
-                    for subsection_row in range(3):
-                        if row1[subsection_row]:
-                            for cell in subsection[subsection_row, :]:
-                                if cell and number in cell:
-                                    cell.remove(number)
+                row1 = i * 3
+                row2 = i * 3 + 1
+                row3 = i * 3 + 2
 
-            for y in range(3):
-                column1 = columns[y]
-                column2 = columns[3 + y]
-                column3 = columns[6 + y]
+                self.xwing(number, row1, row2, row3, in_row, False)
+                self.xwing(number, row2, row3, row1, in_row, False)
+                self.xwing(number, row1, row3, row2, in_row, False)
 
-                if sum(column1) + sum(column2) == 4 and all(column1 == column2):
-                    subsection = self.get_section_by_idx(self.notes, 6 + y)
-                    for subsection_column in range(3):
-                        if column1[subsection_column]:
-                            for cell in subsection[:, subsection_column]:
-                                if cell and number in cell:
-                                    cell.remove(number)
+    def xwing(self, number, check_idx1, check_idx2, change_idx3, in_line, is_column):
+        if sum(in_line[check_idx1]) == 2 and all(
+            in_line[check_idx1] == in_line[check_idx2]
+        ):
+            subsection = self.get_section_by_idx(self.candidates, change_idx3)
+            for subsection_column in range(3):
+                if in_line[check_idx1][subsection_column]:
+                    if is_column:
+                        self.remove_candidate_from_cells(
+                            number, subsection[:, subsection_column]
+                        )
+                    else:
+                        self.remove_candidate_from_cells(
+                            number, subsection[subsection_column]
+                        )
 
-                if sum(column2) + sum(column3) == 4 and all(column2 == column3):
-                    subsection = self.get_section_by_idx(self.notes, y)
-                    for subsection_column in range(3):
-                        if column2[subsection_column]:
-                            for cell in subsection[:, subsection_column]:
-                                if cell and number in cell:
-                                    cell.remove(number)
+    def remove_candidate_from_cells(self, number: int, cells: np.ndarray) -> None:
+        for cell in cells.flatten():
+            if cell and number in cell:
+                cell.remove(number)
 
-                if sum(column1) + sum(column3) == 4 and all(column1 == column3):
-                    subsection = self.get_section_by_idx(self.notes, 3 + y)
-                    for subsection_column in range(3):
-                        if column1[subsection_column]:
-                            for cell in subsection[:, subsection_column]:
-                                if cell and number in cell:
-                                    cell.remove(number)
-
-            print()
-            print(number)
-            for row in self.__print_table_row(number_in_notes, " "):
-                print(row)
-
-    def note_in_1_place(self, number, array):
-        return sum([number in notes for notes in array if notes]) == 1
+    def note_only_in_single_cell(self, number: int, array: np.ndarray) -> bool:
+        return sum([number in candidates for candidates in array if candidates]) == 1
 
     def find_new_values(self) -> None:
         row_sums = np.zeros((9, 9))
@@ -191,60 +128,55 @@ class Table:
         section_sums = np.zeros((3, 3, 9))
 
         for number, idx in product(range(9), range(9)):
-            row_sums[idx, number] = self.note_in_1_place(number + 1, self.notes[idx])
-
-            column_sums[idx, number] = self.note_in_1_place(
-                number + 1, self.notes[:, idx]
+            row_sums[idx, number] = self.note_only_in_single_cell(
+                number + 1, self.candidates[idx]
             )
 
-            sub_section = self.get_section_by_idx(self.notes, idx).flatten()
-            section_sums[idx // 3, idx % 3, number] = self.note_in_1_place(
+            column_sums[idx, number] = self.note_only_in_single_cell(
+                number + 1, self.candidates[:, idx]
+            )
+
+            sub_section = self.get_section_by_idx(self.candidates, idx).flatten()
+            section_sums[idx // 3, idx % 3, number] = self.note_only_in_single_cell(
                 number + 1, sub_section
             )
 
         for x, y in product(range(9), range(9)):
-            if self.notes[x, y] is None:
+            if self.candidates[x, y] is None:
                 continue
 
-            if len(self.notes[x, y]) == 1:
-                self.insert_number(self.notes[x, y][0], x, y)
+            if len(self.candidates[x, y]) == 1:
+                self.insert_number(self.candidates[x, y][0], x, y)
                 continue
 
             for array in [row_sums[x], column_sums[y], section_sums[x // 3, y // 3]]:
                 for number in array.nonzero()[0] + 1:
-                    if self.notes_contain(number, x, y):
+                    if self.candidates_contain(number, x, y):
                         self.insert_number(number, x, y)
                         break
 
     def insert_number(self, number: int, x: int, y: int) -> None:
         self.sudoku_array[x, y] = number
-        self.notes[x, y] = None
+        self.candidates[x, y] = None
 
-        for idx in range(9):
-            row_notes = self.notes[idx, y]
-            if row_notes and number in row_notes:
-                row_notes.remove(number)
-
-            column_notes = self.notes[x, idx]
-            if column_notes and number in column_notes:
-                column_notes.remove(number)
-
-        for x_idx, y_idx in product(
-            range(x - x % 3, x - x % 3 + 3), range(y - y % 3, y - y % 3 + 3)
-        ):
-            section_notes = self.notes[x_idx, y_idx]
-            if section_notes and number in section_notes:
-                section_notes.remove(number)
+        self.remove_candidate_from_cells(number, self.candidates[:, y])
+        self.remove_candidate_from_cells(number, self.candidates[x])
+        self.remove_candidate_from_cells(
+            number, self.get_section(self.candidates, x // 3, y // 3)
+        )
 
     def solve(self) -> None:
-        prev_num_notes = float("inf")
-        self.write_all_notes()
+        prev_num_candidates = float("inf")
+        self.gen_candidates()
 
-        while self.num_notes() < prev_num_notes:
-            prev_num_notes = self.num_notes()
+        while (
+            self.num_candidates() < prev_num_candidates
+            and self.num_filled_cells(self.sudoku_array) < 81
+        ):
+            prev_num_candidates = self.num_candidates()
             self.find_new_values()
-            if self.num_notes() < prev_num_notes:
-                self.filter_notes()
+            if self.num_candidates() == prev_num_candidates:
+                self.filter_candidates()
 
     def validate(self) -> bool:
         result = True
@@ -281,22 +213,22 @@ class Table:
     def num_filled_cells(self, array) -> int:
         return np.count_nonzero(array)
 
-    def num_notes(self) -> int:
+    def num_candidates(self) -> int:
         result = 0
-        for cell_notes in self.notes.flatten():
-            if cell_notes is not None:
-                result += len(cell_notes)
+        for cell_candidates in self.candidates.flatten():
+            if cell_candidates is not None:
+                result += len(cell_candidates)
         return result
 
-    def notes_contain(self, number: int, x: int, y: int) -> bool:
-        return self.notes[x, y] is not None and number in self.notes[x, y]
+    def candidates_contain(self, number: int, x: int, y: int) -> bool:
+        return self.candidates[x, y] is not None and number in self.candidates[x, y]
 
     def print(self) -> None:
         for row in self.__print_table_row(self.sudoku_array, self.empty):
             print(row)
 
-    def print_notes(self) -> None:
-        for row in self.__print_table_row(self.notes, self.empty):
+    def print_candidates(self) -> None:
+        for row in self.__print_table_row(self.candidates, self.empty):
             print(row)
 
     def compare_print(self) -> None:
@@ -360,20 +292,13 @@ if __name__ == "__main__":
 
     t = Table(sudoku, empty=" ")
 
-    # for value in range(1, 10):
-    #     for cords in t.placeable_coords_generator(value):
-    #         t.place(value, cords[0], cords[1])
-
-    # t.print()
-    # t.print_notes()
-    # t.print()
-
     start = time()
     t.solve()
     end = time() - start
+
     t.compare_print()
 
     print("Solution", "Valid" if t.validate() else "Invalid")
     print("Completed in:", end)
 
-    print(t.num_notes())
+    print("Number of left over candidates:", t.num_candidates())
