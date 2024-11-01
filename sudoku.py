@@ -264,6 +264,10 @@ class Table:
             yield result
         yield "-" * 25
 
+    def get_string_section_by_idx(self, idx: int) -> list:
+        current_section = self.get_section_by_idx(self.sudoku_array, idx).flatten()
+        return [str(x if x != 0 else self.empty) for x in current_section]
+
 
 if __name__ == "__main__":
     sudoku = [

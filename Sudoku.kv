@@ -1,0 +1,41 @@
+<SudokuWidget>
+    cols: 3
+    spacing: 3
+    size_hint: None, None
+    size: (500, 500)
+    # pos_hint: ({'anchor_x': 0.5,'anchor_y': 0.5})
+
+
+<SudokuSection>
+    cols: 3
+    spacing: 1
+
+<SudokuButton>
+    background_normal: ""
+    background_color: 1,1,1,1
+    color: 0, 0, 0, 1
+    font_size: 20
+
+<DialWidget>
+    cols: 3
+    spacing: 5
+
+<DialButton>
+    background_color: 1,1,1,1
+    color: 0, 0, 0, 1
+    font_size: 40
+
+<SideBarWidget>
+    orientation: "vertical"
+    DialWidget:
+    Button:
+        text: "Solve"
+        on_press: root.press_solve
+
+<MainLayout>
+    orientation: "horizontal"
+    padding: (20, 20, 20, 20)
+    SudokuWidget: 
+        
+
+            
