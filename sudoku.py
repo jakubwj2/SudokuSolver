@@ -6,7 +6,9 @@ from time import time
 
 class Table:
     def __init__(self, array=None, empty=" "):
-        self.sudoku_array = np.array(array) if array is not None else np.zeros((9, 9))
+        self.sudoku_array = (
+            np.array(array) if array is not None else np.zeros((9, 9), dtype=np.int8)
+        )
         self.empty = empty
         self.candidates = np.ndarray((9, 9), dtype=list)
         self.original_array = np.array(self.sudoku_array)
@@ -16,13 +18,11 @@ class Table:
 
     def place(
         self, value: int, row_idx: int, column_idx: int, force: bool = False
-    ) -> None:
-        if self.is_empty(row_idx, column_idx) or force:
+    ) -> bool:
+        if self.original_array[row_idx, column_idx] == 0 or force:
             self.sudoku_array[row_idx, column_idx] = value
-        else:
-            raise ValueError(
-                "Cannot place value in a filled cell", value, row_idx, column_idx
-            )
+            return True
+        return False
 
     def get_section_by_idx(self, array: np.ndarray, idx: int) -> np.ndarray:
         return self.get_section(array, idx // 3, idx % 3)
@@ -40,6 +40,15 @@ class Table:
                 != number
             )
         )
+
+    def get_placeable_cells(self, number: int) -> list:
+        if number is None:
+            return [False for _ in range(81)]
+
+        result = []
+        for x, y in product(range(9), range(9)):
+            result.append(self.check_placeable(number, x, y))
+        return result
 
     def gen_candidates(self) -> None:
         self.candidates.fill(None)
@@ -267,6 +276,10 @@ class Table:
     def get_string_section_by_idx(self, idx: int) -> list:
         current_section = self.get_section_by_idx(self.sudoku_array, idx).flatten()
         return [str(x if x != 0 else self.empty) for x in current_section]
+
+    def reset(self):
+        self.sudoku_array = self.original_array.copy()
+        self.candidates = np.ndarray((9, 9), dtype=list)
 
 
 if __name__ == "__main__":

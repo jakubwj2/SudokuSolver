@@ -3,39 +3,91 @@
     spacing: 3
     size_hint: None, None
     size: (500, 500)
-    # pos_hint: ({'anchor_x': 0.5,'anchor_y': 0.5})
+    canvas: 
+        Color: 
+            rgb: (0,0,0)
+        Line: 
+            width: 3
+            rectangle: self.x -1.5, self.y -1.5, self.width + 1.5, self.height + 1.5
+        Rectangle:
+            pos: self.pos
+            size: 500, 500
+            
 
-
-<SudokuSection>
-    cols: 3
-    spacing: 1
-
-<SudokuButton>
+<SudokuCellWidget>
     background_normal: ""
-    background_color: 1,1,1,1
-    color: 0, 0, 0, 1
+    background_color: (1, 1, 1, 1)
+    color: (0, 0, 0, 1)
     font_size: 20
+    group: "sudoku_cells"
+
+<MainLayout>
+    orientation: "horizontal"
+    padding: (20, 20, 20, 20)
+    spacing: 20
 
 <DialWidget>
     cols: 3
     spacing: 5
 
-<DialButton>
-    background_color: 1,1,1,1
-    color: 0, 0, 0, 1
-    font_size: 40
+<DialNumberWidget>
+    background_color: (1, 1, 1, 1)
+    color: (0, 0, 0, 1)
+    font_size:40
+    group:"dial_buttons"
 
-<SideBarWidget>
-    orientation: "vertical"
-    DialWidget:
-    Button:
-        text: "Solve"
-        on_press: root.press_solve
+<OperationButton>
+    size_hint: (1, None)
+    size: (200, 50)
+    color: (0, 0, 0, 1)
+    font_size: 20
 
 <MainLayout>
-    orientation: "horizontal"
-    padding: (20, 20, 20, 20)
-    SudokuWidget: 
-        
+    canvas:
+        Color: 
+            rgb:(1, 1, 1, )
+        Rectangle:
+            size: root.size
+            pos: root.pos
 
-            
+
+<-ConfirmPopup>:
+	GridLayout:
+		cols: 1
+		padding: '12dp'
+		pos_hint: {'center': (0.5, 0.5)}
+		size_hint_x: 0.66
+		size_hint_y: None
+		height: self.minimum_height
+
+		canvas:
+			Color:
+				rgba: root.background_color[:3] + [root.background_color[-1] * root._anim_alpha]
+			Rectangle:
+				size: root._window.size if root._window else (0, 0)
+
+			Color:
+				rgb: 1, 1, 1
+			BorderImage:
+				source: root.background
+				border: root.border
+				pos: self.pos
+				size: self.size
+
+		Label:
+			text: root.text
+			size_hint_y: None
+			height: self.texture_size[1] + dp(16)
+			text_size: self.width - dp(16), None
+			halign: 'center'
+
+		BoxLayout:
+			size_hint_y: None
+			height: sp(48)
+
+			Button:
+				text: root.ok_text
+				on_press: root.ok()
+			Button:
+				text: root.cancel_text
+				on_press: root.cancel()
