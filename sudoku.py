@@ -128,7 +128,7 @@ class Table:
             if cell and number in cell:
                 cell.remove(number)
 
-    def note_only_in_single_cell(self, number: int, array: np.ndarray) -> bool:
+    def single_candidate_in_list(self, number: int, array: np.ndarray) -> bool:
         return sum([number in candidates for candidates in array if candidates]) == 1
 
     def find_new_values(self) -> None:
@@ -137,16 +137,16 @@ class Table:
         section_sums = np.zeros((3, 3, 9))
 
         for number, idx in product(range(9), range(9)):
-            row_sums[idx, number] = self.note_only_in_single_cell(
+            row_sums[idx, number] = self.single_candidate_in_list(
                 number + 1, self.candidates[idx]
             )
 
-            column_sums[idx, number] = self.note_only_in_single_cell(
+            column_sums[idx, number] = self.single_candidate_in_list(
                 number + 1, self.candidates[:, idx]
             )
 
             sub_section = self.get_section_by_idx(self.candidates, idx).flatten()
-            section_sums[idx // 3, idx % 3, number] = self.note_only_in_single_cell(
+            section_sums[idx // 3, idx % 3, number] = self.single_candidate_in_list(
                 number + 1, sub_section
             )
 

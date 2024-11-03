@@ -1,54 +1,64 @@
-<SudokuWidget>
-    cols: 3
-    spacing: 3
-    size_hint: None, None
-    size: (500, 500)
-    canvas: 
-        Color: 
-            rgb: (0,0,0)
-        Line: 
-            width: 3
-            rectangle: self.x -1.5, self.y -1.5, self.width + 1.5, self.height + 1.5
-        Rectangle:
-            pos: self.pos
-            size: 500, 500
-            
-
-<SudokuCellWidget>
-    background_normal: ""
-    background_color: (1, 1, 1, 1)
-    color: (0, 0, 0, 1)
-    font_size: 20
-    group: "sudoku_cells"
+#:set primary_color rgba("#1a5653")
+#:set secondary_color rgba("#08313a")
+#:set bg_primary_color rgba("#5cd85a")
+#:set bg_secondary_color rgba("#107869")
+#:set bg_tetriary_color rgba("#74ff72")
 
 <MainLayout>
     orientation: "horizontal"
     padding: (20, 20, 20, 20)
     spacing: 20
+    canvas:
+        Color:
+            rgba: bg_primary_color
+        Rectangle:
+            size: root.size
+            pos: root.pos
+
+<SudokuWidget>
+    cols: 3
+    spacing: 3
+    size_hint: None, None
+    size: (500, 500)
+    canvas:
+        Color:
+            rgba: secondary_color
+        Line:
+            width: 3
+            rectangle: self.x -1.5, self.y -1.5, self.width + 1.5, self.height + 1.5
+        Rectangle:
+            pos: self.pos
+            size: 500, 500
+
+
+<SudokuCell>
+    background_normal: ""
+    background_color: bg_secondary_color if self.is_highlighted else bg_tetriary_color
+    color: (0,0,0,1) if self.is_locked else secondary_color
+    font_size: 30
+    group: "sudoku_cells"
+
 
 <DialWidget>
     cols: 3
     spacing: 5
 
-<DialNumberWidget>
-    background_color: (1, 1, 1, 1)
-    color: (0, 0, 0, 1)
-    font_size:40
+
+<DialButton>
+    background_normal: ""
+    background_color: bg_tetriary_color
+    color: secondary_color
+    font_size: 40
     group:"dial_buttons"
+
 
 <OperationButton>
     size_hint: (1, None)
     size: (200, 50)
-    color: (0, 0, 0, 1)
-    font_size: 20
-
-<MainLayout>
-    canvas:
-        Color: 
-            rgb:(1, 1, 1, )
-        Rectangle:
-            size: root.size
-            pos: root.pos
+    background_normal: ""
+    background_color: secondary_color
+    color: bg_primary_color
+    font_size: 30
 
 
 <-ConfirmPopup>:

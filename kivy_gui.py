@@ -7,7 +7,7 @@ from kivy.uix.togglebutton import ToggleButton
 from kivy.config import Config
 from kivy.utils import platform
 from kivy.uix.popup import Popup
-from kivy.properties import StringProperty
+from kivy.properties import StringProperty, BooleanProperty
 
 # from kivy.clock import Clock
 from kivy.animation import Animation
@@ -40,12 +40,15 @@ class SudokuWidget(GridLayout):
 
         self.buttons = []
         for x, y in product(range(9), range(9)):
-            button = SudokuCellWidget(x, y, on_press=SudokuApp.inst.on_select_cell)
+            button = SudokuCell(x, y, on_press=SudokuApp.inst.on_select_cell)
             self.buttons.append(button)
             self.sections[x // 3][y // 3].add_widget(button)
 
 
-class SudokuCellWidget(ToggleButton):
+class SudokuCell(ToggleButton):
+    is_locked = BooleanProperty(True)
+    is_highlighted = BooleanProperty(True)
+
     def __init__(self, x, y, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.idx = x, y
@@ -56,14 +59,14 @@ class DialWidget(GridLayout):
         super().__init__(*args, **kwargs)
         for i in range(9):
             self.add_widget(
-                DialNumberWidget(
+                DialButton(
                     number=i + 1,
                     on_press=lambda x: SudokuApp.inst.on_select_number(x),
                 )
             )
 
 
-class DialNumberWidget(ToggleButton):
+class DialButton(ToggleButton):
     def __init__(self, number, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.number = number
@@ -156,6 +159,7 @@ class SudokuApp(App):
 
     def on_start(self):
         self.repopulate_sudoku()
+        self.highlight_placeable(None)
 
         # self.update_event = Clock.schedule_interval(self.update, 1 / 60)
 
@@ -169,11 +173,11 @@ class SudokuApp(App):
             t.original_array.flatten(),
         ):
             button.text = str(number if number != 0 else "")
-            button.color = (0, 0, 0, 1) if original == number else (0, 0, 1, 1)
+            button.is_locked = original != 0
 
     def highlight_placeable(self, number):
         for button, placeable in zip(self.buttons, t.get_placeable_cells(number)):
-            button.background_color = (0, 1, 1, 1) if placeable else (1, 1, 1, 1)
+            button.is_highlighted = placeable
 
     def on_solve(self, instance):
         if instance.text == "Solve":
@@ -204,6 +208,7 @@ class SudokuApp(App):
         def clear_all(instance):
             t.__init__()
             self.repopulate_sudoku()
+            self.highlight_placeable(None)
 
         popup = ConfirmPopup(
             on_ok=clear_all,
@@ -213,12 +218,11 @@ class SudokuApp(App):
         popup.open()
 
     def on_validate(self, instance):
-        default_color = instance.color
         anim = Animation(
             background_color=(0, 1, 0, 1) if t.validate() else (1, 0, 0, 1),
-            duration=0.2,
+            duration=0.1,
         )
-        anim += Animation(background_color=default_color, duration=0.2)
+        anim += Animation(background_color=instance.background_color, duration=0.1)
         anim.start(instance)
 
     def on_select_number(self, instance):
@@ -232,6 +236,10 @@ class SudokuApp(App):
                 self.deselect_number()
 
     def on_select_cell(self, instance):
+        if instance.is_locked:
+            instance.state = "normal"
+            self.deselect_cell()
+            return
         if instance.state == "normal":
             self.selected_cell = None
             return
@@ -244,15 +252,20 @@ class SudokuApp(App):
         if self.selected_number is None or self.selected_cell is None:
             return False
         x, y = self.selected_cell.idx
-        if not t.place(self.selected_number.number, x, y):
+        if t.sudoku_array[x, y] == self.selected_number.number:
+            self.on_clear(self.selected_cell)
+            self.highlight_placeable(self.selected_number.number)
+            return True
+        elif not t.place(self.selected_number.number, x, y):
             button = self.buttons[x * 9 + y]
+            default_bg_color = button.background_color
             anim = Animation(background_color=(1, 0, 0, 1), duration=0.2)
-            anim += Animation(background_color=(1, 1, 1, 1), duration=0.2)
+            anim += Animation(background_color=default_bg_color, duration=0.2)
             anim.start(button)
             self.deselect_cell()
             return False
+
         self.selected_cell.text = str(self.selected_number.number)
-        self.selected_cell.color = (0, 0, 1, 1)
         self.highlight_placeable(self.selected_number.number)
         return True
 
