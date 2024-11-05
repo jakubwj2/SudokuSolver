@@ -1,2 +1,6 @@
 .vscode
+.venv
 __pycache__
+.buildozer
+bin
+android_log.txt

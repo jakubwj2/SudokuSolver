@@ -6,8 +6,8 @@
 
 <MainLayout>
     orientation: "horizontal"
-    padding: (20, 20, 20, 20)
-    spacing: 20
+    padding: (50, 50, 50, 50)
+    spacing: 50
     canvas:
         Color:
             rgba: bg_primary_color
@@ -19,7 +19,7 @@
     cols: 3
     spacing: 3
     size_hint: None, None
-    size: (500, 500)
+    size: (1100, 1100)
     canvas:
         Color:
             rgba: secondary_color
@@ -28,37 +28,39 @@
             rectangle: self.x -1.5, self.y -1.5, self.width + 1.5, self.height + 1.5
         Rectangle:
             pos: self.pos
-            size: 500, 500
+            size: 1100, 1100
 
 
 <SudokuCell>
     background_normal: ""
     background_color: bg_secondary_color if self.is_highlighted else bg_tetriary_color
     color: (0,0,0,1) if self.is_locked else secondary_color
-    font_size: 30
+    font_size: 75
     group: "sudoku_cells"
 
 
 <DialWidget>
     cols: 3
-    spacing: 5
+    spacing: 20
+    size_hint: None, None
+    size: 600, 600
 
 
 <DialButton>
     background_normal: ""
     background_color: bg_tetriary_color
     color: secondary_color
-    font_size: 40
+    font_size: 100
     group:"dial_buttons"
 
 
 <OperationButton>
     size_hint: (1, None)
-    size: (200, 50)
+    size: (200, 100)
     background_normal: ""
     background_color: secondary_color
     color: bg_primary_color
-    font_size: 30
+    font_size: 75
 
 
 <-ConfirmPopup>:

@@ -8,6 +8,8 @@ from kivy.config import Config
 from kivy.utils import platform
 from kivy.uix.popup import Popup
 from kivy.properties import StringProperty, BooleanProperty
+from kivy.lang.builder import Builder
+from kivy.core.window import Window
 
 # from kivy.clock import Clock
 from kivy.animation import Animation
@@ -28,6 +30,8 @@ sudoku = [
 ]
 
 t = Table(sudoku, empty=" ")
+
+Builder.load_file("Sudoku.kv")
 
 
 class SudokuWidget(GridLayout):
@@ -103,9 +107,11 @@ class ConfirmPopup(Popup):
 class MainLayout(BoxLayout):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
         self.sudoku_widget = SudokuWidget()
+
         anchor = AnchorLayout(
-            anchor_x="left", anchor_y="top", size_hint=(None, 1), size=(500, 0)
+            anchor_x="left", anchor_y="top", size_hint=(None, 1), size=(1100, 0)
         )
         anchor.add_widget(self.sudoku_widget)
         self.add_widget(anchor)
@@ -113,12 +119,13 @@ class MainLayout(BoxLayout):
         vertical = BoxLayout(orientation="vertical", spacing=20)
 
         dial_anchor_layout = AnchorLayout(
-            anchor_x="right", anchor_y="top", size_hint=(None, None), size=(250, 250)
+            anchor_x="center",
+            anchor_y="top",
         )
         dial_anchor_layout.add_widget(DialWidget())
         vertical.add_widget(dial_anchor_layout)
 
-        operation_buttons = BoxLayout(orientation="vertical", spacing=10)
+        operation_buttons = BoxLayout(orientation="vertical", spacing=40)
 
         operation_buttons.add_widget(
             OperationButton(text="Clear", on_press=SudokuApp.inst.on_clear)
@@ -281,8 +288,11 @@ class SudokuApp(App):
 
 
 if __name__ == "__main__":
-    if platform == "win":
+    if platform == "win" or platform == "linux":
         Config.set("graphics", "resizable", False)
-        Config.set("graphics", "width", 810)
-        Config.set("graphics", "height", 540)
+        # Window.size = (810, 540)
+        # Window.size = (2468, 1118)
+
+    # 2468 - 1000 = 1468
+    # Poco 6 window size -> (2712, 1220)
     SudokuApp().run()
