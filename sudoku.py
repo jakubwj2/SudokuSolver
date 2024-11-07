@@ -12,6 +12,7 @@ class Table:
         self.empty = empty
         self.candidates = np.ndarray((9, 9), dtype=list)
         self.original_array = np.array(self.sudoku_array)
+        self.gen_candidates()
 
     def is_empty(self, row_idx: int, column_idx: int) -> bool:
         return self.sudoku_array[row_idx, column_idx] == 0
@@ -20,7 +21,7 @@ class Table:
         self, value: int, row_idx: int, column_idx: int, force: bool = False
     ) -> bool:
         if self.original_array[row_idx, column_idx] == 0 or force:
-            self.sudoku_array[row_idx, column_idx] = value
+            self.insert_number(value, row_idx, column_idx)
             return True
         return False
 
@@ -43,11 +44,11 @@ class Table:
 
     def get_placeable_cells(self, number: int) -> list:
         if number is None:
-            return [False for _ in range(81)]
-
+            # return [False for _ in range(81)]
+            return list(np.full(81, False))
         result = []
         for x, y in product(range(9), range(9)):
-            result.append(self.check_placeable(number, x, y))
+            result.append(self.candidates_contain(number, x, y))
         return result
 
     def gen_candidates(self) -> None:
@@ -280,6 +281,7 @@ class Table:
     def reset(self):
         self.sudoku_array = self.original_array.copy()
         self.candidates = np.ndarray((9, 9), dtype=list)
+        self.gen_candidates()
 
 
 if __name__ == "__main__":

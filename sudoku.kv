@@ -1,0 +1,132 @@
+#:set primary_color rgba("#1a5653")
+#:set secondary_color rgba("#08313a")
+#:set bg_primary_color rgba("#5cd85a")
+#:set bg_secondary_color rgba("#107869")
+#:set bg_tetriary_color rgba("#74ff72")
+#:set spacing_padding dp(20)
+#:set font_s sp(25)
+#:set border_size dp(3)
+
+<MainLayout>
+    padding: spacing_padding
+    spacing: spacing_padding
+    orientation: "horizontal" if root.width > root.height else "vertical"
+    canvas:
+        Color:
+            rgba: bg_primary_color
+        Rectangle:
+            size: root.size
+            pos: root.pos
+    BoxLayout:
+        SudokuWidget:
+            cols: 3
+            spacing: border_size
+            pos_hint: {'center_x': 0.5,'center_y': 0.5}
+            size_hint: None, None
+            size: min(self.parent.height, self.parent.width), min(self.parent.height, self.parent.width)
+            canvas.before:
+                Color:
+                    rgba: secondary_color
+                Rectangle:
+                    pos: self.x - border_size, self.y - border_size
+                    size: self.width + border_size * 2, self.height + border_size * 2
+
+    BoxLayout:
+        orientation: "vertical"
+        spacing: spacing_padding / 2
+        AnchorLayout:
+            anchor_x: "center"
+            DialWidget:
+                cols: 3
+                spacing: spacing_padding / 2
+                size_hint: None, None
+                size: min(self.parent.height, self.parent.width), min(self.parent.height, self.parent.width)
+
+        GridLayout:
+            rows: 2
+            size_hint: 1, 0.4
+            spacing: spacing_padding / 2
+            OperationButton:
+                text: "Clear"
+                on_press: app.on_clear(self)
+            OperationButton:
+                text: "Lock"
+                on_press: app.on_lock(self)
+            OperationButton:
+                text: "Validate"
+                on_press: app.on_validate(self)
+            OperationButton:
+                text: "Filter"
+                on_press: app.on_filter(self)
+            OperationButton:
+                text: "Solve"
+                on_press: app.on_solve(self)
+
+
+<SudokuCell>
+    text: str(self.number if self.number != 0 else "")
+    background_normal: ""
+    background_color: bg_secondary_color if self.is_highlighted else bg_tetriary_color
+    color: (0,0,0,1) if self.is_locked else secondary_color
+    font_size: font_s
+    group: "sudoku_cells"
+    on_press: app.on_select_cell(self)
+
+
+<DialButton>
+    text: str(self.number)
+    background_normal: ""
+    background_color: bg_tetriary_color
+    color: secondary_color
+    font_size: font_s * 1.5
+    group:"dial_buttons"
+
+
+<OperationButton@Button>
+    size_hint: 1, 1
+    background_normal: ""
+    background_color: secondary_color
+    color: bg_primary_color
+    font_size: font_s
+
+
+<-ConfirmPopup>:
+	GridLayout:
+		cols: 1
+		padding: '12dp'
+		pos_hint: {'center': (0.5, 0.5)}
+		size_hint_x: 0.66
+		size_hint_y: None
+		height: self.minimum_height
+
+		canvas:
+			Color:
+				rgba: root.background_color[:3] + [root.background_color[-1] * root._anim_alpha]
+			Rectangle:
+				size: root._window.size if root._window else (0, 0)
+
+			Color:
+				rgb: 1, 1, 1
+			BorderImage:
+				source: root.background
+				border: root.border
+				pos: self.pos
+				size: self.size
+
+		Label:
+			text: root.text
+			size_hint_y: None
+			height: self.texture_size[1] + dp(16)
+			text_size: self.width - dp(16), None
+			halign: 'center'
+
+		BoxLayout:
+			size_hint_y: None
+			height: sp(48)
+
+			Button:
+				text: root.ok_text
+				on_press: root.ok()
+			Button:
+				text: root.cancel_text
+				on_press: root.cancel()

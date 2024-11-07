@@ -1,21 +1,15 @@
 from kivy.app import App
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.gridlayout import GridLayout
-from kivy.uix.anchorlayout import AnchorLayout
-from kivy.uix.button import Button
+from kivy.uix.behaviors.togglebutton import ToggleButtonBehavior
 from kivy.uix.togglebutton import ToggleButton
-from kivy.config import Config
-from kivy.utils import platform
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.popup import Popup
-from kivy.properties import StringProperty, BooleanProperty
-from kivy.lang.builder import Builder
-from kivy.core.window import Window
-
-# from kivy.clock import Clock
 from kivy.animation import Animation
+from kivy.properties import StringProperty, BooleanProperty, ObjectProperty
+from kivy.core.window import Window
+from itertools import product
 
 from sudoku import Table
-from itertools import product
 
 sudoku = [
     [0, 0, 7, 9, 3, 0, 0, 0, 8],
@@ -31,31 +25,30 @@ sudoku = [
 
 t = Table(sudoku, empty=" ")
 
-Builder.load_file("Sudoku.kv")
-
 
 class SudokuWidget(GridLayout):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.sections: list[list[GridLayout]] = [[] for _ in range(3)]
+        sections = [[] for _ in range(3)]
         for x, y in product(range(3), range(3)):
-            self.sections[x].append(GridLayout(cols=3, spacing=1))
-            self.add_widget(self.sections[x][y])
+            sections[x].append(GridLayout(cols=3, spacing=1))
+            self.add_widget(sections[x][y])
 
         self.buttons = []
         for x, y in product(range(9), range(9)):
             button = SudokuCell(x, y, on_press=SudokuApp.inst.on_select_cell)
             self.buttons.append(button)
-            self.sections[x // 3][y // 3].add_widget(button)
+            sections[x // 3][y // 3].add_widget(button)
 
 
 class SudokuCell(ToggleButton):
     is_locked = BooleanProperty(True)
     is_highlighted = BooleanProperty(True)
+    number = ObjectProperty(int)
 
     def __init__(self, x, y, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.idx = x, y
+        self.idx = (x, y)
 
 
 class DialWidget(GridLayout):
@@ -71,14 +64,7 @@ class DialWidget(GridLayout):
 
 
 class DialButton(ToggleButton):
-    def __init__(self, number, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.number = number
-        self.text = str(number)
-
-
-class OperationButton(Button):
-    pass
+    number = ObjectProperty(int)
 
 
 class ConfirmPopup(Popup):
@@ -105,47 +91,13 @@ class ConfirmPopup(Popup):
 
 
 class MainLayout(BoxLayout):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.sudoku_widget = SudokuWidget()
-
-        anchor = AnchorLayout(
-            anchor_x="left", anchor_y="top", size_hint=(None, 1), size=(1100, 0)
-        )
-        anchor.add_widget(self.sudoku_widget)
-        self.add_widget(anchor)
-
-        vertical = BoxLayout(orientation="vertical", spacing=20)
-
-        dial_anchor_layout = AnchorLayout(
-            anchor_x="center",
-            anchor_y="top",
-        )
-        dial_anchor_layout.add_widget(DialWidget())
-        vertical.add_widget(dial_anchor_layout)
-
-        operation_buttons = BoxLayout(orientation="vertical", spacing=40)
-
-        operation_buttons.add_widget(
-            OperationButton(text="Clear", on_press=SudokuApp.inst.on_clear)
-        )
-        operation_buttons.add_widget(
-            OperationButton(text="Lock", on_press=SudokuApp.inst.on_lock)
-        )
-        operation_buttons.add_widget(
-            OperationButton(text="Validate", on_press=SudokuApp.inst.on_validate)
-        )
-        operation_buttons.add_widget(
-            OperationButton(text="Solve", on_press=SudokuApp.inst.on_solve)
-        )
-
-        vertical.add_widget(operation_buttons)
-
-        self.add_widget(vertical)
+    pass
 
 
 class SudokuApp(App):
+    def build(self):
+        return MainLayout()
+
     inst = None
 
     def __init__(self, **kwargs):
@@ -159,19 +111,13 @@ class SudokuApp(App):
         self.selected_number = None
         self.selected_cell = None
 
-    def build(self):
-        self.main_layout = MainLayout()
-        self.buttons = self.main_layout.sudoku_widget.buttons
-        return self.main_layout
-
     def on_start(self):
+        self.buttons = ToggleButtonBehavior.get_widgets("sudoku_cells")
         self.repopulate_sudoku()
         self.highlight_placeable(None)
 
-        # self.update_event = Clock.schedule_interval(self.update, 1 / 60)
-
-    # def update(self, dt):
-    # pass
+    def on_stop(self):
+        del self.buttons
 
     def repopulate_sudoku(self):
         for button, number, original in zip(
@@ -179,7 +125,7 @@ class SudokuApp(App):
             t.sudoku_array.flatten(),
             t.original_array.flatten(),
         ):
-            button.text = str(number if number != 0 else "")
+            button.number = number
             button.is_locked = original != 0
 
     def highlight_placeable(self, number):
@@ -203,6 +149,14 @@ class SudokuApp(App):
         t.original_array = t.sudoku_array
         t.reset()
         self.repopulate_sudoku()
+
+    def on_filter(self, instance):
+        t.filter_candidates()
+        # t.find_new_values()
+        self.highlight_placeable(
+            None if self.selected_number is None else self.selected_number.number
+        )
+        self.deselect_cell()
 
     def on_clear(self, instance):
         if self.selected_cell is not None:
@@ -272,7 +226,7 @@ class SudokuApp(App):
             self.deselect_cell()
             return False
 
-        self.selected_cell.text = str(self.selected_number.number)
+        self.selected_cell.number = self.selected_number.number
         self.highlight_placeable(self.selected_number.number)
         return True
 
@@ -288,11 +242,12 @@ class SudokuApp(App):
 
 
 if __name__ == "__main__":
-    if platform == "win" or platform == "linux":
-        Config.set("graphics", "resizable", False)
-        # Window.size = (810, 540)
-        # Window.size = (2468, 1118)
+    # if platform == "win" or platform == "linux":
+    #     Config.set("graphics", "resizable", False)
+    # Window.size = (810, 540)
+    # Window.size = (2712, 1220)
+    Window.size = (2712 / 3, 1220 / 3)
+    # Window.size = (1220 / 3, 2712 / 3)
 
-    # 2468 - 1000 = 1468
     # Poco 6 window size -> (2712, 1220)
     SudokuApp().run()
