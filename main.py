@@ -3,6 +3,7 @@ from kivy.uix.behaviors.togglebutton import ToggleButtonBehavior
 from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.popup import Popup
 from kivy.animation import Animation
 from kivy.properties import StringProperty, BooleanProperty, ObjectProperty
@@ -36,19 +37,24 @@ class SudokuWidget(GridLayout):
 
         self.buttons = []
         for x, y in product(range(9), range(9)):
-            button = SudokuCell(x, y, on_press=SudokuApp.inst.on_select_cell)
+            button = SudokuCell(x, y)
             self.buttons.append(button)
             sections[x // 3][y // 3].add_widget(button)
 
 
-class SudokuCell(ToggleButton):
+class SudokuCell(ToggleButtonBehavior, AnchorLayout):
     is_locked = BooleanProperty(True)
     is_highlighted = BooleanProperty(True)
     number = ObjectProperty(int)
+    candidate_list = StringProperty("")
 
     def __init__(self, x, y, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.idx = (x, y)
+        self.group = "sudoku_cells"
+
+    def on_state(self, widget, value):
+        SudokuApp.inst.on_select_cell(self)
 
 
 class DialWidget(GridLayout):
@@ -110,11 +116,13 @@ class SudokuApp(App):
 
         self.selected_number = None
         self.selected_cell = None
+        self.hide_candidates = False
 
     def on_start(self):
         self.buttons = ToggleButtonBehavior.get_widgets("sudoku_cells")
         self.repopulate_sudoku()
         self.highlight_placeable(None)
+        self.populate_candidates(self.hide_candidates)
 
     def on_stop(self):
         del self.buttons
@@ -127,10 +135,12 @@ class SudokuApp(App):
         ):
             button.number = number
             button.is_locked = original != 0
+            self.populate_candidates(self.hide_candidates)
 
     def highlight_placeable(self, number):
         for button, placeable in zip(self.buttons, t.get_placeable_cells(number)):
             button.is_highlighted = placeable
+        self.populate_candidates(self.hide_candidates)
 
     def on_solve(self, instance):
         if instance.text == "Solve":
@@ -163,7 +173,7 @@ class SudokuApp(App):
             x, y = self.selected_cell.idx
             if t.original_array[x, y] == 0:
                 t.sudoku_array[x, y] = 0
-                self.buttons[x * 9 + y].text = ""
+                self.buttons[x * 9 + y].number = 0
                 return
 
         def clear_all(instance):
@@ -208,6 +218,24 @@ class SudokuApp(App):
         self.selected_cell = instance
         if self.place_number():
             self.deselect_cell()
+
+    def on_show_candidates(self, instance):
+        self.hide_candidates = not self.hide_candidates
+        self.populate_candidates(self.hide_candidates)
+
+    def populate_candidates(self, hide):
+        for button, candidates in zip(self.buttons, t.candidates.flatten()):
+            candidate_list = ""
+            if candidates is not None and not hide:
+                for i in range(1, 10):
+                    if i % 3 != 0:
+                        candidate_list += f"{i}  " if i in candidates else "   "
+                    elif i < 9:
+                        candidate_list += f"{i}\n" if i in candidates else " \n"
+                    else:
+                        candidate_list += str(i) if i in candidates else ""
+
+            button.candidate_list = candidate_list
 
     def place_number(self) -> bool:
         if self.selected_number is None or self.selected_cell is None:

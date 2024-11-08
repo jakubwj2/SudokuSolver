@@ -59,18 +59,37 @@
                 text: "Filter"
                 on_press: app.on_filter(self)
             OperationButton:
+                text: "Candidates"
+                on_press: app.on_show_candidates(self)
+            OperationButton:
                 text: "Solve"
                 on_press: app.on_solve(self)
 
 
 <SudokuCell>
-    text: str(self.number if self.number != 0 else "")
-    background_normal: ""
-    background_color: bg_secondary_color if self.is_highlighted else bg_tetriary_color
-    color: (0,0,0,1) if self.is_locked else secondary_color
-    font_size: font_s
-    group: "sudoku_cells"
-    on_press: app.on_select_cell(self)
+    anchor_x: "center"
+    anchor_x: "center"
+    canvas:
+        Color:
+            rgba: (0,0,0,0) if root.state == "normal" else (0, 0, 0.5, 0.5)
+        Rectangle:
+            pos:self.pos
+            size:self.size
+    canvas.before:
+        Color:
+            rgba: bg_secondary_color if root.is_highlighted else bg_tetriary_color
+        Rectangle:
+            pos: self.pos
+            size: self.size
+    Label:
+        text: str(root.number if root.number != 0 else "")
+        color: (0,0,0,1) if root.is_locked else secondary_color
+        font_size: font_s
+
+    Label:
+        text: root.candidate_list
+        font_size:sp(11)
+        color: "black"
 
 
 <DialButton>
