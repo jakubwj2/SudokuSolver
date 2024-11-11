@@ -17,11 +17,12 @@
         Rectangle:
             size: root.size
             pos: root.pos
-    BoxLayout:
+    AnchorLayout:
+        anchor_x: "center"
+        anchor_y: "center"
         SudokuWidget:
             cols: 3
             spacing: border_size
-            pos_hint: {'center_x': 0.5,'center_y': 0.5}
             size_hint: None, None
             size: min(self.parent.height, self.parent.width), min(self.parent.height, self.parent.width)
             canvas.before:
