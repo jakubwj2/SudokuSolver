@@ -1,2 +1,5 @@
 numpy
 kivy
+pillow
+opencv-python
+tensorflow
