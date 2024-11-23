@@ -6,3 +6,4 @@ bin
 android_log.txt
 /sudoku
 output.png
+/old_models
