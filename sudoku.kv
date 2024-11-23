@@ -1,3 +1,6 @@
+#: import FallOutTransition kivy.uix.screenmanager.FallOutTransition
+#: import RiseInTransition kivy.uix.screenmanager.RiseInTransition
+
 #:set primary_color rgba("#1a5653")
 #:set secondary_color rgba("#08313a")
 #:set bg_primary_color rgba("#5cd85a")
@@ -6,65 +9,98 @@
 #:set spacing_padding dp(20)
 #:set font_s sp(25)
 #:set border_size dp(3)
+#:set transition_len .25
 
-<MainLayout>
-    padding: spacing_padding
-    spacing: spacing_padding
-    orientation: "horizontal" if root.width > root.height else "vertical"
-    canvas:
-        Color:
-            rgba: bg_primary_color
-        Rectangle:
-            size: root.size
-            pos: root.pos
-    AnchorLayout:
-        anchor_x: "center"
-        anchor_y: "center"
-        SudokuWidget:
-            cols: 3
-            spacing: border_size
-            size_hint: None, None
-            size: min(self.parent.height, self.parent.width), min(self.parent.height, self.parent.width)
-            canvas.before:
-                Color:
-                    rgba: secondary_color
-                Rectangle:
-                    pos: self.x - border_size, self.y - border_size
-                    size: self.width + border_size * 2, self.height + border_size * 2
-
+<CameraScreen>
+    name: "camera"
     BoxLayout:
-        orientation: "vertical"
-        spacing: spacing_padding / 2
+        orientation: "horizontal" if root.width > root.height else "vertical"
+        RelativeLayout:
+            size_hint: None, None
+            size: (self.parent.height // 9 * 16, self.parent.height) if root.width > root.height else (self.parent.width // 9 * 16, self.parent.width)
+            Camera:
+                resolution: 1920, 1080
+                play: root.transition_state == "in"
+
+            Button:
+                text: "Back"
+
+                on_press:
+                    root.manager.transition = FallOutTransition(duration = transition_len)
+                    root.manager.current="sudoku"
+                size_hint: None, None
+                size: 100,50
+                pos_hint: {"x": 0.01, 'top': 0.99}
+
+        OperationButton:
+            text: "Capture Sudoku"
+
+
+<SudokuScreen>
+    name: "sudoku"
+    BoxLayout:
+        padding: spacing_padding
+        spacing: spacing_padding
+        orientation: "horizontal" if root.width > root.height else "vertical"
+        canvas:
+            Color:
+                rgba: bg_primary_color
+            Rectangle:
+                size: root.size
+                pos: root.pos
         AnchorLayout:
             anchor_x: "center"
-            DialWidget:
+            anchor_y: "center"
+            SudokuWidget:
                 cols: 3
-                spacing: spacing_padding / 2
+                spacing: border_size
                 size_hint: None, None
                 size: min(self.parent.height, self.parent.width), min(self.parent.height, self.parent.width)
+                canvas.before:
+                    Color:
+                        rgba: secondary_color
+                    Rectangle:
+                        pos: self.x - border_size, self.y - border_size
+                        size: self.width + border_size * 2, self.height + border_size * 2
 
-        GridLayout:
-            rows: 2
-            size_hint: 1, 0.4
+        BoxLayout:
+            orientation: "vertical"
             spacing: spacing_padding / 2
-            OperationButton:
-                text: "Clear"
-                on_press: app.on_clear(self)
-            OperationButton:
-                text: "Lock"
-                on_press: app.on_lock(self)
-            OperationButton:
-                text: "Validate"
-                on_press: app.on_validate(self)
-            OperationButton:
-                text: "Filter"
-                on_press: app.on_filter(self)
-            OperationButton:
-                text: "Candidates"
-                on_press: app.on_show_candidates(self)
-            OperationButton:
-                text: "Solve"
-                on_press: app.on_solve(self)
+            AnchorLayout:
+                anchor_x: "center"
+                DialWidget:
+                    cols: 3
+                    spacing: spacing_padding / 2
+                    size_hint: None, None
+                    size: min(self.parent.height, self.parent.width), min(self.parent.height, self.parent.width)
+
+            GridLayout:
+                rows: 2
+                size_hint: 1, 0.4
+                spacing: spacing_padding / 2
+                OperationButton:
+                    text: "Clear"
+                    on_press: app.on_clear(self)
+                OperationButton:
+                    text: "Lock"
+                    on_press: app.on_lock(self)
+                OperationButton:
+                    text: "Validate"
+                    on_press: app.on_validate(self)
+                OperationButton:
+                    text: "Filter"
+                    on_press: app.on_filter(self)
+                OperationButton:
+                    text: "Candidates"
+                    on_press: app.on_show_candidates(self)
+                OperationButton:
+                    text: "Solve"
+                    on_press: app.on_solve(self)
+                OperationButton:
+                    text: "Camera"
+                    on_press:  
+                        root.manager.transition = RiseInTransition(duration = transition_len)
+                        root.manager.current = "camera"
 
 
 <SudokuCell>

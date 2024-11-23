@@ -1,5 +1,7 @@
 from kivy.app import App
 from kivy.uix.behaviors.togglebutton import ToggleButtonBehavior
+from kivy.uix.screenmanager import ScreenManager, Screen
+from kivy.uix.screenmanager import *
 from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.boxlayout import BoxLayout
@@ -96,13 +98,20 @@ class ConfirmPopup(Popup):
         pass
 
 
-class MainLayout(BoxLayout):
+class SudokuScreen(Screen):
+    pass
+
+
+class CameraScreen(Screen):
     pass
 
 
 class SudokuApp(App):
     def build(self):
-        return MainLayout()
+        sm = ScreenManager()
+        sm.add_widget(SudokuScreen())
+        sm.add_widget(CameraScreen())
+        return sm
 
     inst = None
 
