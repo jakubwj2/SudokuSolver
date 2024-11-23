@@ -30,7 +30,7 @@ def cell_pre_processing(img):
     return img
 
 
-def largest_contour_area(contorus):
+def largest_contour_area(contours):
     biggest = None
     max_area = 0
     for contour in contours:
@@ -67,20 +67,22 @@ def split_boxes(img):
     return boxes
 
 
-if __name__ == "__main__":
-    IMG_PATH = "sudoku\\sudoku_7_4.png"
+def read_sudoku(path_to_file: str) -> np.ndarray | None:
+    img = cv2.imread(path_to_file)
 
-    img = cv2.imread(IMG_PATH)
-    # blank_image = np.zeros(img.shape, np.uint8)
     thresh = sudoku_pre_processing(img)
-
     contours, hierarchy = cv2.findContours(
         thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
     )
 
     largest_contour, area = largest_contour_area(contours)
-    img_with_sudoku = img.copy()
+
+    if area == 0:
+        print("No sudoku found!")
+        return None
+
     largest_contour = reorder_points(largest_contour)
+    # img_with_sudoku = img.copy()
     # img_with_sudoku = cv2.drawContours(
     #     img_with_sudoku, [largest_contour], -1, (0, 255, 0), 10
     # )
@@ -97,13 +99,23 @@ if __name__ == "__main__":
     predictions = model.predict(cells)
     Y_pred_classes = np.argmax(predictions, axis=1)
 
-    print(Y_pred_classes.reshape(9, 9))
+    result = Y_pred_classes.reshape(9, 9)
+
+    # print(result)
 
     # for pred, cell in zip(Y_pred_classes, cells):
     #     plt.imshow(cell, cmap="gray", vmin=0, vmax=1)
     #     plt.axis("off")
     #     plt.show()
 
-    plt.imshow(imgWarpGray, cmap="gray", vmin=0, vmax=255)
-    plt.axis("off")
-    plt.show()
+    # plt.imshow(imgWarpGray, cmap="gray", vmin=0, vmax=255)
+    # plt.axis("off")
+    # plt.show()
+    return result
+
+
+if __name__ == "__main__":
+    IMG_PATH = "sudoku\\sudoku_7_4.png"
+
+    array = read_sudoku(IMG_PATH)
+    print(array)
