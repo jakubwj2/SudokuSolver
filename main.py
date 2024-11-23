@@ -1,10 +1,8 @@
 from kivy.app import App
 from kivy.uix.behaviors.togglebutton import ToggleButtonBehavior
 from kivy.uix.screenmanager import ScreenManager, Screen
-from kivy.uix.screenmanager import *
 from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.gridlayout import GridLayout
-from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.popup import Popup
 from kivy.animation import Animation
