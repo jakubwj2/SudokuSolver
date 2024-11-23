@@ -4,6 +4,7 @@ __pycache__
 .buildozer
 bin
 android_log.txt
-/sudoku
+/sudoku_photos
+/sudoku_screenshots
 output.png
 /old_models

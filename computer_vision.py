@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 WIDTH = 450
 HEIGHT = 450
 
-model = tf.keras.models.load_model("mnist_v01.keras")
+model = tf.keras.models.load_model("mnist_v02.keras")
 
 
 def sudoku_pre_processing(img):

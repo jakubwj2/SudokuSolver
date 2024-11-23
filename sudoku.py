@@ -280,7 +280,15 @@ class Table:
 
     def reset(self):
         self.sudoku_array = self.original_array.copy()
-        self.candidates = np.ndarray((9, 9), dtype=list)
+        self.gen_candidates()
+
+    def replace_sudoku(self, new_sudoku: np.ndarray) -> None:
+        if new_sudoku is None:
+            self.__init__()
+            return
+
+        assert new_sudoku.shape == (9, 9)
+        self.sudoku_array = new_sudoku
         self.gen_candidates()
 
 

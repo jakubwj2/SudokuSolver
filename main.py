@@ -5,10 +5,16 @@ from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.popup import Popup
+from kivy.uix.camera import Camera
 from kivy.animation import Animation
 from kivy.properties import StringProperty, BooleanProperty, ObjectProperty
 from kivy.core.window import Window
+import numpy as np
+
 from itertools import product
+from computer_vision import read_sudoku
+import time
+import os
 
 from sudoku import Table
 
@@ -101,15 +107,32 @@ class SudokuScreen(Screen):
 
 
 class CameraScreen(Screen):
-    pass
+    def capture_sudoku(self):
+        camera: Camera = self.ids["camera"]
+        timestr = time.strftime("%Y-%m-%d_%H-%M-%S")
+        img_path = "sudoku_photos/%s.png" % timestr
+        camera.export_to_png(img_path)
+        new_sudoku = read_sudoku(img_path)
+        if new_sudoku is None:
+            os.rename(img_path, img_path[:-4] + "_None.png")
+        else:
+            t.__init__(new_sudoku)
+            t.original_array = np.zeros((9, 9))
+            SudokuApp.inst.repopulate_sudoku()
+            SudokuApp.inst.highlight_placeable(None)
+            SudokuApp.inst.sm.current = "sudoku"
+            SudokuApp.inst.populate_candidates(True)
+            SudokuApp.inst.hide_candidates = True
 
 
 class SudokuApp(App):
+
+    sm = ScreenManager()
+
     def build(self):
-        sm = ScreenManager()
-        sm.add_widget(SudokuScreen())
-        sm.add_widget(CameraScreen())
-        return sm
+        self.sm.add_widget(SudokuScreen())
+        self.sm.add_widget(CameraScreen())
+        return self.sm
 
     inst = None
 
@@ -227,7 +250,7 @@ class SudokuApp(App):
             self.deselect_cell()
 
     def on_show_candidates(self, instance):
-        self.hide_candidates = not self.hide_candidates
+        self. = not self.hide_candidates
         self.populate_candidates(self.hide_candidates)
 
     def populate_candidates(self, hide):
