@@ -3,3 +3,5 @@ kivy
 pillow
 opencv-python
 tensorflow
+pyjnius
+python-for-android

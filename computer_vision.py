@@ -1,14 +1,16 @@
 import cv2
 import numpy as np
-import tensorflow as tf
 
 # import matplotlib.pyplot as plt
-
+from model import TensorFlowModel
 
 WIDTH = 450
 HEIGHT = 450
 
-model = tf.keras.models.load_model("mnist_v02.keras")
+path_to_model = "mnist_v03.tflite"
+# model = tf.keras.models.load_model("mnist_v02.keras")
+model = TensorFlowModel()
+model.load(path_to_model)
 
 
 def sudoku_pre_processing(img):
@@ -97,8 +99,12 @@ def read_sudoku(path_to_file: str) -> np.ndarray | None:
     boxes = split_boxes(imgWarpGray)
     cells = np.array(list(map(cell_pre_processing, boxes)))
 
-    predictions = model.predict(cells)
-    Y_pred_classes = np.argmax(predictions, axis=1)
+    predictions = []
+
+    for cell in cells:
+        predictions.append(model.pred([cell]))
+
+    Y_pred_classes = np.argmax(predictions, axis=2)
 
     result = Y_pred_classes.reshape(9, 9)
 
