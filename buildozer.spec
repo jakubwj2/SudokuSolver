@@ -202,7 +202,8 @@ android.permissions = android.permission.CAMERA, android.permission.WRITE_EXTERN
 #android.add_resources =
 
 # (list) Gradle dependencies to add
-android.gradle_dependencies = "org.tensorflow:tensorflow-lite:+", "org.tensorflow:tensorflow-lite-support:0.0.0-nightly"
+android.gradle_dependencies = org.tensorflow:tensorflow-lite:0.1.2-nightly,org.tensorflow:tensorflow-lite-support:+
+
 
 # (bool) Enable AndroidX support. Enable when 'android.gradle_dependencies'
 # contains an 'androidx' package, or any package from Kotlin source.
