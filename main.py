@@ -13,7 +13,7 @@ import numpy as np
 
 from itertools import product
 
-# from computer_vision import read_sudoku
+from computer_vision import read_sudoku
 import time
 import os
 
@@ -120,23 +120,23 @@ class SudokuScreen(Screen):
     pass
 
 
-# class CameraScreen(Screen):
-#     def capture_sudoku(self):
-#         camera: Camera = self.ids["camera"]
-#         timestr = time.strftime("%Y-%m-%d_%H-%M-%S")
-#         img_path = "sudoku_photos/%s.png" % timestr
-#         camera.export_to_png(img_path)
-#         new_sudoku = read_sudoku(img_path)
-#         if new_sudoku is None:
-#             os.rename(img_path, img_path[:-4] + "_None.png")
-#         else:
-#             t.__init__(new_sudoku)
-#             t.original_array = np.zeros((9, 9))
-#             SudokuApp.inst.repopulate_sudoku()
-#             SudokuApp.inst.highlight_placeable(None)
-#             SudokuApp.inst.sm.current = "sudoku"
-#             SudokuApp.inst.hide_candidates = True
-#             SudokuApp.inst.populate_candidates(True)
+class CameraScreen(Screen):
+    def capture_sudoku(self):
+        camera: Camera = self.ids["camera"]
+        timestr = time.strftime("%Y-%m-%d_%H-%M-%S")
+        img_path = "sudoku_photos/%s.png" % timestr
+        camera.export_to_png(img_path)
+        new_sudoku = read_sudoku(img_path)
+        if new_sudoku is None:
+            os.rename(img_path, img_path[:-4] + "_None.png")
+        else:
+            t.__init__(new_sudoku)
+            t.original_array = np.zeros((9, 9))
+            SudokuApp.inst.repopulate_sudoku()
+            SudokuApp.inst.highlight_placeable(None)
+            SudokuApp.inst.sm.current = "sudoku"
+            SudokuApp.inst.hide_candidates = True
+            SudokuApp.inst.populate_candidates(True)
 
 
 class SudokuApp(App):
@@ -145,7 +145,7 @@ class SudokuApp(App):
 
     def build(self):
         self.sm.add_widget(SudokuScreen())
-        # self.sm.add_widget(CameraScreen())
+        self.sm.add_widget(CameraScreen())
         return self.sm
 
     inst = None
