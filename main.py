@@ -12,23 +12,37 @@ from kivy.core.window import Window
 import numpy as np
 
 from itertools import product
-from computer_vision import read_sudoku
+
+# from computer_vision import read_sudoku
 import time
 import os
 
 from sudoku import Table
 
+# sudoku = [
+#     [0, 0, 7, 9, 3, 0, 0, 0, 8],
+#     [6, 8, 0, 0, 0, 5, 0, 9, 0],
+#     [0, 0, 0, 0, 0, 0, 0, 0, 2],
+#     [0, 0, 0, 4, 0, 0, 0, 8, 0],
+#     [5, 0, 0, 1, 0, 6, 0, 3, 0],
+#     [0, 6, 0, 0, 0, 0, 0, 0, 0],
+#     [0, 0, 1, 0, 5, 4, 0, 0, 0],
+#     [0, 0, 9, 7, 0, 0, 0, 0, 1],
+#     [0, 0, 0, 0, 0, 0, 0, 7, 0],
+# ]
+
 sudoku = [
-    [0, 0, 7, 9, 3, 0, 0, 0, 8],
-    [6, 8, 0, 0, 0, 5, 0, 9, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 2],
-    [0, 0, 0, 4, 0, 0, 0, 8, 0],
-    [5, 0, 0, 1, 0, 6, 0, 3, 0],
-    [0, 6, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 1, 0, 5, 4, 0, 0, 0],
-    [0, 0, 9, 7, 0, 0, 0, 0, 1],
-    [0, 0, 0, 0, 0, 0, 0, 7, 0],
+    [0, 1, 6, 0, 0, 0, 0, 5, 0],
+    [0, 3, 0, 1, 0, 0, 0, 4, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 9],
+    [0, 0, 1, 0, 0, 3, 5, 0, 0],
+    [0, 0, 0, 7, 6, 4, 0, 0, 0],
+    [0, 0, 4, 9, 1, 0, 3, 0, 0],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 5, 0, 0, 0, 1, 0, 2, 0],
+    [0, 4, 0, 0, 5, 0, 8, 0, 0],
 ]
+
 
 t = Table(sudoku, empty=" ")
 
@@ -106,23 +120,23 @@ class SudokuScreen(Screen):
     pass
 
 
-class CameraScreen(Screen):
-    def capture_sudoku(self):
-        camera: Camera = self.ids["camera"]
-        timestr = time.strftime("%Y-%m-%d_%H-%M-%S")
-        img_path = "sudoku_photos/%s.png" % timestr
-        camera.export_to_png(img_path)
-        new_sudoku = read_sudoku(img_path)
-        if new_sudoku is None:
-            os.rename(img_path, img_path[:-4] + "_None.png")
-        else:
-            t.__init__(new_sudoku)
-            t.original_array = np.zeros((9, 9))
-            SudokuApp.inst.repopulate_sudoku()
-            SudokuApp.inst.highlight_placeable(None)
-            SudokuApp.inst.sm.current = "sudoku"
-            SudokuApp.inst.populate_candidates(True)
-            SudokuApp.inst.hide_candidates = True
+# class CameraScreen(Screen):
+#     def capture_sudoku(self):
+#         camera: Camera = self.ids["camera"]
+#         timestr = time.strftime("%Y-%m-%d_%H-%M-%S")
+#         img_path = "sudoku_photos/%s.png" % timestr
+#         camera.export_to_png(img_path)
+#         new_sudoku = read_sudoku(img_path)
+#         if new_sudoku is None:
+#             os.rename(img_path, img_path[:-4] + "_None.png")
+#         else:
+#             t.__init__(new_sudoku)
+#             t.original_array = np.zeros((9, 9))
+#             SudokuApp.inst.repopulate_sudoku()
+#             SudokuApp.inst.highlight_placeable(None)
+#             SudokuApp.inst.sm.current = "sudoku"
+#             SudokuApp.inst.hide_candidates = True
+#             SudokuApp.inst.populate_candidates(True)
 
 
 class SudokuApp(App):
@@ -131,7 +145,7 @@ class SudokuApp(App):
 
     def build(self):
         self.sm.add_widget(SudokuScreen())
-        self.sm.add_widget(CameraScreen())
+        # self.sm.add_widget(CameraScreen())
         return self.sm
 
     inst = None
@@ -250,7 +264,7 @@ class SudokuApp(App):
             self.deselect_cell()
 
     def on_show_candidates(self, instance):
-        self. = not self.hide_candidates
+        self.hide_candidates = not self.hide_candidates
         self.populate_candidates(self.hide_candidates)
 
     def populate_candidates(self, hide):

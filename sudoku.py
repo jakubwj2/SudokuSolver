@@ -1,5 +1,5 @@
 from collections.abc import Iterator
-from itertools import product
+from itertools import product, islice
 import numpy as np
 from time import time
 
@@ -13,6 +13,7 @@ class Table:
         self.candidates = np.ndarray((9, 9), dtype=list)
         self.original_array = np.array(self.sudoku_array)
         self.gen_candidates()
+        self.solutions = list()
 
     def is_empty(self, row_idx: int, column_idx: int) -> bool:
         return self.sudoku_array[row_idx, column_idx] == 0
@@ -166,8 +167,13 @@ class Table:
                         break
 
     def insert_number(self, number: int, x: int, y: int) -> None:
+        was_empty = self.sudoku_array[x, y] == 0
         self.sudoku_array[x, y] = number
         self.candidates[x, y] = None
+
+        if was_empty:
+            self.gen_candidates()
+            return
 
         self.remove_candidate_from_cells(number, self.candidates[:, y])
         self.remove_candidate_from_cells(number, self.candidates[x])
@@ -187,6 +193,44 @@ class Table:
             self.find_new_values()
             if self.num_candidates() == prev_num_candidates:
                 self.filter_candidates()
+
+        if self.num_filled_cells(self.sudoku_array) < 81:
+            self.backpropagation_time = time()
+            self.solutions = []
+            self._backpropagation(0)
+            print(f"Completion time: {time() - self.backpropagation_time:.2f}")
+            self.sudoku_array = self.solutions[0]
+            self.gen_candidates()
+            print("Number of solutions:", len(self.solutions))
+
+    def _backpropagation(self, start_idx) -> bool:
+        for x, y in islice(product(range(9), range(9)), start_idx, 81):
+            if self.sudoku_array[x, y] == 0:
+                for n in range(1, 10):
+                    if self.possible(x, y, n):
+                        self.sudoku_array[x, y] = n
+                        if self._backpropagation(x * 9 + y + 1):
+                            return True
+                        self.sudoku_array[x, y] = 0
+                return False
+        for solution in self.solutions:
+            assert not np.all(self.sudoku_array == solution)
+
+        assert self.validate()
+        assert self.num_filled_cells(self.sudoku_array) == 81
+        self.solutions.append(self.sudoku_array.copy())
+        print(len(self.solutions), end="\r")
+        return True
+
+    def possible(self, row_idx, column_idx, number):
+        return (
+            np.all(self.sudoku_array[row_idx, :] != number)
+            and np.all(self.sudoku_array[:, column_idx] != number)
+            and np.all(
+                self.get_section(self.sudoku_array, row_idx // 3, column_idx // 3)
+                != number
+            )
+        )
 
     def validate(self) -> bool:
         result = True
