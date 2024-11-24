@@ -124,7 +124,7 @@ class CameraScreen(Screen):
     def capture_sudoku(self):
         camera: Camera = self.ids["camera"]
         timestr = time.strftime("%Y-%m-%d_%H-%M-%S")
-        img_path = "sudoku_photos/%s.png" % timestr
+        img_path = os.path.join(os.getcwd(), "sudoku_photos", "%s.png" % timestr)
         camera.export_to_png(img_path)
         new_sudoku = read_sudoku(img_path)
         if new_sudoku is None:

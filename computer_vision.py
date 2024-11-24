@@ -1,8 +1,10 @@
 import cv2
 import numpy as np
+import os
 
 # import matplotlib.pyplot as plt
 from model import TensorFlowModel
+
 
 WIDTH = 450
 HEIGHT = 450
@@ -10,7 +12,7 @@ HEIGHT = 450
 path_to_model = "mnist_v03.tflite"
 # model = tf.keras.models.load_model("mnist_v02.keras")
 model = TensorFlowModel()
-model.load(path_to_model)
+model.load(os.path.join(os.getcwd(), path_to_model))
 
 
 def sudoku_pre_processing(img):
