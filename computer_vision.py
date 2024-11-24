@@ -122,7 +122,7 @@ def read_sudoku(path_to_file: str) -> np.ndarray | None:
 
 
 if __name__ == "__main__":
-    IMG_PATH = "sudoku\\sudoku_7_4.png"
+    IMG_PATH = "sudoku_screenshots\\sudoku_7_4.png"
 
     array = read_sudoku(IMG_PATH)
     print(array)
