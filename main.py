@@ -146,6 +146,7 @@ class SudokuApp(App):
     def build(self):
         self.sm.add_widget(SudokuScreen())
         self.sm.add_widget(CameraScreen())
+        print("___ App started! ___" * 10)
         return self.sm
 
     inst = None
