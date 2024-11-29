@@ -146,7 +146,6 @@ class SudokuApp(App):
     def build(self):
         self.sm.add_widget(SudokuScreen())
         self.sm.add_widget(CameraScreen())
-        print("___ App started! ___" * 10)
         return self.sm
 
     inst = None
@@ -235,7 +234,9 @@ class SudokuApp(App):
 
     def on_validate(self, instance):
         anim = Animation(
-            background_color=(0, 1, 0, 1) if t.validate() else (1, 0, 0, 1),
+            background_color=(
+                (0, 1, 0, 1) if t.validate(t.sudoku_array) else (1, 0, 0, 1)
+            ),
             duration=0.1,
         )
         anim += Animation(background_color=instance.background_color, duration=0.1)

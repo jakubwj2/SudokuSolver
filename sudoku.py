@@ -185,42 +185,66 @@ class Table:
         prev_num_candidates = float("inf")
         self.gen_candidates()
 
-        while (
-            self.num_candidates() < prev_num_candidates
-            and self.num_filled_cells(self.sudoku_array) < 81
-        ):
-            prev_num_candidates = self.num_candidates()
-            self.find_new_values()
-            if self.num_candidates() == prev_num_candidates:
-                self.filter_candidates()
+        # while (
+        #     self.num_candidates() < prev_num_candidates
+        #     and self.num_filled_cells(self.sudoku_array) < 81
+        # ):
+        #     prev_num_candidates = self.num_candidates()
+        #     self.find_new_values()
+        #     if self.num_candidates() == prev_num_candidates:
+        #         self.filter_candidates()
 
         if self.num_filled_cells(self.sudoku_array) < 81:
             self.backpropagation_time = time()
             self.solutions = []
-            self._backpropagation(0)
+            # self._backpropagation_single_solutonion(0)
+            self._backpropagation_all_solutions(0)
+            self.test_all_solutions()
             print(f"Completion time: {time() - self.backpropagation_time:.2f}")
-            self.sudoku_array = self.solutions[0]
+            if len(self.solutions) != 0:
+                self.sudoku_array = self.solutions[0]
             self.gen_candidates()
             print("Number of solutions:", len(self.solutions))
 
-    def _backpropagation(self, start_idx) -> bool:
+    def _backpropagation_single_solutonion(self, start_idx) -> bool:
         for x, y in islice(product(range(9), range(9)), start_idx, 81):
             if self.sudoku_array[x, y] == 0:
                 for n in range(1, 10):
                     if self.possible(x, y, n):
                         self.sudoku_array[x, y] = n
-                        if self._backpropagation(x * 9 + y + 1):
+                        if self._backpropagation_single_solutonion(x * 9 + y + 1):
                             return True
                         self.sudoku_array[x, y] = 0
                 return False
+
         for solution in self.solutions:
             assert not np.all(self.sudoku_array == solution)
-
-        assert self.validate()
+        assert self.validate(self.sudoku_array)
         assert self.num_filled_cells(self.sudoku_array) == 81
         self.solutions.append(self.sudoku_array.copy())
         print(len(self.solutions), end="\r")
         return True
+
+    def _backpropagation_all_solutions(self, start_idx):
+        for x, y in islice(product(range(9), range(9)), start_idx, 81):
+            if self.sudoku_array[x, y] == 0:
+                for n in range(1, 10):
+                    if self.possible(x, y, n):
+                        self.sudoku_array[x, y] = n
+                        self._backpropagation_all_solutions(x * 9 + y + 1)
+                        self.sudoku_array[x, y] = 0
+                return
+
+        self.solutions.append(self.sudoku_array.copy())
+        print(len(self.solutions), end="\r")
+
+    def test_all_solutions(self):
+        for solution_idx in range(len(self.solutions)):
+            solution = self.solutions[solution_idx]
+            assert self.validate(solution)
+            assert self.num_filled_cells(solution) == 81
+            for other_solution_idx in range(solution_idx + 1, len(self.solutions)):
+                assert not np.all(solution == self.solutions[other_solution_idx])
 
     def possible(self, row_idx, column_idx, number):
         return (
@@ -232,23 +256,19 @@ class Table:
             )
         )
 
-    def validate(self) -> bool:
+    def validate(self, array) -> bool:
         result = True
         for idx in range(9):
-            if len(set(self.sudoku_array[idx]) - {0}) != np.count_nonzero(
-                self.sudoku_array[idx]
-            ):
+            if len(set(array[idx]) - {0}) != np.count_nonzero(array[idx]):
                 print("Not all values are unique in row %s" % idx)
                 result = False
-            if len(set(self.sudoku_array[:, idx]) - {0}) != np.count_nonzero(
-                self.sudoku_array[:, idx]
-            ):
+            if len(set(array[:, idx]) - {0}) != np.count_nonzero(array[:, idx]):
                 print("Not all values are unique in column %s" % idx)
                 result = False
 
         for section_row_idx in range(3):
             for section_column_idx in range(3):
-                sub_section = self.sudoku_array[
+                sub_section = array[
                     section_row_idx * 3 : (section_row_idx + 1) * 3,
                     section_column_idx * 3 : (section_column_idx + 1) * 3,
                 ]
@@ -369,7 +389,7 @@ if __name__ == "__main__":
 
     t.compare_print()
 
-    print("Solution", "Valid" if t.validate() else "Invalid")
+    print("Solution", "Valid" if t.validate(t.sudoku_array) else "Invalid")
     print("Completed in:", end)
 
     print("Number of left over candidates:", t.num_candidates())

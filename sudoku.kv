@@ -20,9 +20,16 @@
             size: (self.parent.height // 9 * 16, self.parent.height) if root.width > root.height else (self.parent.width // 9 * 16, self.parent.width)
             Camera:
                 id: camera
+                # orientation: "horizontal"
                 resolution: 1920, 1080
                 play: root.transition_state == "in"
-
+                canvas.before:
+                    PushMatrix
+                    Rotate:
+                        angle: 0 if root.width > root.height else -90
+                        origin: self.center
+                canvas.after:
+                    PopMatrix
             Button:
                 text: "Back"
 
@@ -30,7 +37,7 @@
                     root.manager.transition = FallOutTransition(duration = transition_len)
                     root.manager.current="sudoku"
                 size_hint: None, None
-                size: 100,50
+                size: dp(100), dp(50)
                 pos_hint: {"x": 0.01, 'top': 0.99}
 
         OperationButton:
