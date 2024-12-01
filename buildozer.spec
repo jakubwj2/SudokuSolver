@@ -7,7 +7,7 @@ title = Sudoku Solver
 package.name = SudokuSolver
 
 # (str) Package domain (needed for android/ios packaging)
-package.domain = org.SudokuSolver.com
+package.domain = com.squirrellegend
 
 # (str) Source code where the main.py live
 source.dir = .

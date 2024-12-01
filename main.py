@@ -9,6 +9,7 @@ from kivy.uix.camera import Camera
 from kivy.animation import Animation
 from kivy.properties import StringProperty, BooleanProperty, ObjectProperty
 from kivy.core.window import Window
+from kivy import platform
 import numpy as np
 
 from itertools import product
@@ -124,7 +125,15 @@ class CameraScreen(Screen):
     def capture_sudoku(self):
         camera: Camera = self.ids["camera"]
         timestr = time.strftime("%Y-%m-%d_%H-%M-%S")
-        img_path = os.path.join(os.getcwd(), "sudoku_photos", "%s.png" % timestr)
+        img_folder = (
+            # os.getcwd()
+            # if not platform == "android"
+            # # else os.path.join(user_data_dir, "DCIM", "SudokuSolver")
+            # else
+            os.path.join(os.path.dirname(App.user_data_dir), "DCIM")
+        )
+        img_path = os.path.join(img_folder, "sudoku_photos", "%s.png" % timestr)
+        print("img path", img_path)
         camera.export_to_png(img_path)
         new_sudoku = read_sudoku(img_path)
         if new_sudoku is None:

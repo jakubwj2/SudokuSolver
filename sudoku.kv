@@ -23,13 +23,7 @@
                 # orientation: "horizontal"
                 resolution: 1920, 1080
                 play: root.transition_state == "in"
-                canvas.before:
-                    PushMatrix
-                    Rotate:
-                        angle: 0 if root.width > root.height else -90
-                        origin: self.center
-                canvas.after:
-                    PopMatrix
+
             Button:
                 text: "Back"
 
