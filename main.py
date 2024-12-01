@@ -125,14 +125,13 @@ class CameraScreen(Screen):
     def capture_sudoku(self):
         camera: Camera = self.ids["camera"]
         timestr = time.strftime("%Y-%m-%d_%H-%M-%S")
-        img_folder = (
-            # os.getcwd()
-            # if not platform == "android"
-            # # else os.path.join(user_data_dir, "DCIM", "SudokuSolver")
-            # else
-            os.path.join(os.path.dirname(App.user_data_dir), "DCIM")
+        img_folder = os.path.join(
+            os.path.dirname(SudokuApp.inst.user_data_dir), "DCIM", "Sudoku Photos"
         )
-        img_path = os.path.join(img_folder, "sudoku_photos", "%s.png" % timestr)
+
+        if not os.path.exists(img_folder):
+            os.makedirs(img_folder)
+        img_path = os.path.join(img_folder, "%s.png" % timestr)
         print("img path", img_path)
         camera.export_to_png(img_path)
         new_sudoku = read_sudoku(img_path)
