@@ -125,14 +125,7 @@ class CameraScreen(Screen):
     def capture_sudoku(self):
         camera: Camera = self.ids["camera"]
         timestr = time.strftime("%Y-%m-%d_%H-%M-%S")
-        img_folder = os.path.join(
-            os.path.dirname(SudokuApp.inst.user_data_dir), "DCIM", "Sudoku Photos"
-        )
-
-        if not os.path.exists(img_folder):
-            os.makedirs(img_folder)
-        img_path = os.path.join(img_folder, "%s.png" % timestr)
-        print("img path", img_path)
+        img_path = os.path.join(SudokuApp.inst.img_folder, "%s.png" % timestr)
         camera.export_to_png(img_path)
         new_sudoku = read_sudoku(img_path)
         if new_sudoku is None:
@@ -169,6 +162,14 @@ class SudokuApp(App):
         self.selected_number = None
         self.selected_cell = None
         self.hide_candidates = False
+
+        if platform == "android":
+            self.img_folder = os.path.join("/sdcard", "DCIM", "SudokuPhotos")
+        else:
+            self.img_folder = os.path.join(os.getcwd(), "SudokuPhotos")
+
+        if not os.path.exists(self.img_folder):
+            os.makedirs(self.img_folder)
 
     def on_start(self):
         self.buttons = ToggleButtonBehavior.get_widgets("sudoku_cells")
