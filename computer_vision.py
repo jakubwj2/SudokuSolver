@@ -87,10 +87,6 @@ def read_sudoku(path_to_file: str) -> np.ndarray | None:
         return None
 
     largest_contour = reorder_points(largest_contour)
-    # img_with_sudoku = img.copy()
-    # img_with_sudoku = cv2.drawContours(
-    #     img_with_sudoku, [largest_contour], -1, (0, 255, 0), 10
-    # )
 
     pts1 = np.float32(largest_contour)
     pts2 = np.float32([[0, 0], [WIDTH, 0], [0, HEIGHT], [WIDTH, HEIGHT]])
