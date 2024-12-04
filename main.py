@@ -6,12 +6,10 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.popup import Popup
 from kivy.uix.camera import Camera
-from kivy.uix.image import Image
 from kivy.animation import Animation
 from kivy.properties import StringProperty, BooleanProperty, ObjectProperty
 from kivy.core.window import Window
 from kivy import platform
-from kivy.clock import Clock
 from kivy.graphics.texture import Texture
 import numpy as np
 import cv2
@@ -125,16 +123,17 @@ class SudokuScreen(Screen):
     pass
 
 
-class KivyCamera(Image):
-    def __init__(self, capture, fps, **kwargs):
-        super(KivyCamera, self).__init__(**kwargs)
-        self.capture = capture
-        Clock.schedule_interval(self.update, 1.0 / fps)
+class KivyCamera(Camera):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._format = "bgr"
 
-    def update(self, dt):
-        ret, frame = self.capture.read()
-        if not ret:
-            return
+    def on_tex(self, camera):
+        height, width = camera.texture.height, camera.texture.width
+
+        newvalue = np.frombuffer(camera.texture.pixels, np.uint8)
+        newvalue = newvalue.reshape(height, width, 4)
+        frame = cv2.cvtColor(newvalue, cv2.COLOR_RGBA2BGR)
 
         ret, frame_with_highlight = try_draw_sudoku_highlight(frame.copy())
         if ret:
@@ -142,23 +141,24 @@ class KivyCamera(Image):
 
         # convert it to texture
         buf1 = cv2.flip(frame_with_highlight, 0)
-        buf = buf1.tostring()
+        buf = buf1.tobytes()
         image_texture = Texture.create(
             size=(frame_with_highlight.shape[1], frame_with_highlight.shape[0]),
             colorfmt="bgr",
         )
         image_texture.blit_buffer(buf, colorfmt="bgr", bufferfmt="ubyte")
+
         # display image from the texture
-        self.texture = image_texture
+        self.texture = texture = image_texture
+        self.texture_size = list(texture.size)
+        self.canvas.ask_update()
 
 
 class CameraScreen(Screen):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.capture = cv2.VideoCapture(0)
-        self.my_camera = KivyCamera(capture=self.capture, fps=30)
-        self.ids["camera_parent"].add_widget(self.my_camera)
+        self.my_camera = self.ids["camera"]
 
     def capture_sudoku(self):
 
