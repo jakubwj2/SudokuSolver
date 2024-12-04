@@ -178,10 +178,6 @@ class CameraScreen(Screen):
             SudokuApp.inst.hide_candidates = True
             SudokuApp.inst.populate_candidates(True)
 
-    def on_stop(self):
-        # without this, app will not exit even if the window is closed
-        self.capture.release()
-
 
 class SudokuApp(App):
 
