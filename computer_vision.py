@@ -72,8 +72,50 @@ def split_boxes(img):
     return boxes
 
 
-def read_sudoku(path_to_file: str) -> np.ndarray | None:
-    img = cv2.imread(path_to_file)
+def draw_contours(
+    frame: np.array,
+    contours: tuple,
+    indices: int = -1,
+    thickness: int = 1,
+    color: tuple = (0, 0, 255),
+    alpha: float = 0.4,
+):
+    """
+    Draw in-place some contours in a frame.
+
+    Args:
+        frame (np.array): The input frame.
+        contours (tuple): The contours defining the mask.
+        indices (int): The index of the contours to be drawn.
+            Pass ``-1`` to consider all of them.
+        color (tuple): The color used to draw the contours.
+        alpha (float): A value between ``0.0`` (transparent)
+            and ``1.0`` (opaque).
+        thickness (int): The thickness of the contours.
+    """
+    if alpha:
+        mask = np.zeros(frame.shape, np.uint8)
+        cv2.drawContours(mask, contours, indices, color, -1)
+        frame[:] = cv2.addWeighted(mask, alpha, frame, beta=1.0, gamma=0.0)
+    cv2.drawContours(frame, contours, indices, color, thickness)
+
+
+def try_draw_sudoku_highlight(img):
+    thresh = sudoku_pre_processing(img)
+    contours, hierarchy = cv2.findContours(
+        thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+    )
+
+    largest_contour, area = largest_contour_area(contours)
+    if area == 0:
+        return False, img
+
+    draw_contours(img, [largest_contour], thickness=2, color=(0, 255, 255))
+
+    return True, img
+
+
+def read_sudoku(img) -> np.ndarray | None:
 
     thresh = sudoku_pre_processing(img)
     contours, hierarchy = cv2.findContours(

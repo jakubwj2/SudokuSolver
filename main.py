@@ -6,15 +6,19 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.popup import Popup
 from kivy.uix.camera import Camera
+from kivy.uix.image import Image
 from kivy.animation import Animation
 from kivy.properties import StringProperty, BooleanProperty, ObjectProperty
 from kivy.core.window import Window
 from kivy import platform
+from kivy.clock import Clock
+from kivy.graphics.texture import Texture
 import numpy as np
+import cv2
 
 from itertools import product
 
-from computer_vision import read_sudoku
+from computer_vision import read_sudoku, try_draw_sudoku_highlight
 import time
 import os
 
@@ -121,13 +125,48 @@ class SudokuScreen(Screen):
     pass
 
 
+class KivyCamera(Image):
+    def __init__(self, capture, fps, **kwargs):
+        super(KivyCamera, self).__init__(**kwargs)
+        self.capture = capture
+        Clock.schedule_interval(self.update, 1.0 / fps)
+
+    def update(self, dt):
+        ret, frame = self.capture.read()
+        if not ret:
+            return
+
+        ret, frame_with_highlight = try_draw_sudoku_highlight(frame.copy())
+        if ret:
+            self.img = frame
+
+        # convert it to texture
+        buf1 = cv2.flip(frame_with_highlight, 0)
+        buf = buf1.tostring()
+        image_texture = Texture.create(
+            size=(frame_with_highlight.shape[1], frame_with_highlight.shape[0]),
+            colorfmt="bgr",
+        )
+        image_texture.blit_buffer(buf, colorfmt="bgr", bufferfmt="ubyte")
+        # display image from the texture
+        self.texture = image_texture
+
+
 class CameraScreen(Screen):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.capture = cv2.VideoCapture(0)
+        self.my_camera = KivyCamera(capture=self.capture, fps=30)
+        self.ids["camera_parent"].add_widget(self.my_camera)
+
     def capture_sudoku(self):
-        camera: Camera = self.ids["camera"]
+
         timestr = time.strftime("%Y-%m-%d_%H-%M-%S")
         img_path = os.path.join(SudokuApp.inst.img_folder, "%s.png" % timestr)
-        camera.export_to_png(img_path)
-        new_sudoku = read_sudoku(img_path)
+        cv2.imwrite(img_path, self.my_camera.img)
+        # camera.export_to_png(img_path)
+        new_sudoku = read_sudoku(self.my_camera.img)
         if new_sudoku is None:
             os.rename(img_path, img_path[:-4] + "_None.png")
         else:
@@ -138,6 +177,10 @@ class CameraScreen(Screen):
             SudokuApp.inst.sm.current = "sudoku"
             SudokuApp.inst.hide_candidates = True
             SudokuApp.inst.populate_candidates(True)
+
+    def on_stop(self):
+        # without this, app will not exit even if the window is closed
+        self.capture.release()
 
 
 class SudokuApp(App):
