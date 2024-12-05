@@ -16,7 +16,7 @@ model.load(os.path.join(os.getcwd(), path_to_model))
 
 
 def sudoku_pre_processing(img):
-    img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    img_gray = cv2.cvtColor(img, cv2.COLOR_RGBA2GRAY)
     img_blur = cv2.GaussianBlur(img_gray, (5, 5), 1)
     img_thresh = cv2.adaptiveThreshold(
         img_blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2
@@ -40,12 +40,27 @@ def largest_contour_area(contours):
     max_area = 0
     for contour in contours:
         area = cv2.contourArea(contour)
-        if area > 1000:
-            peri = cv2.arcLength(contour, True)
-            approx = cv2.approxPolyDP(contour, 0.02 * peri, True)
-            if area > max_area and len(approx) == 4:
-                biggest = approx
-                max_area = area
+        # We intend to increase the area by warping to a minimum of 63_504 (28^2*9^2) pixels
+        # We are currently expanding the area to over 200_000 (for preprocessing purposes)
+        if area < 10_000 or area < max_area:
+            continue
+
+        peri = cv2.arcLength(contour, True)
+        approx = cv2.approxPolyDP(contour, 0.02 * peri, True)
+        if len(approx) != 4:
+            continue
+
+        x, y, w, h = cv2.boundingRect(approx)
+        aspect_ratio = float(w) / h
+        if aspect_ratio < 0.9:
+            continue
+
+        bb_filled = area > (np.sqrt(w * w + h * h) / 2) ** 2
+        if not bb_filled:
+            continue
+
+        biggest = approx
+        max_area = area
 
     return biggest, max_area
 
@@ -110,7 +125,9 @@ def try_draw_sudoku_highlight(img):
     if area == 0:
         return False, img
 
-    draw_contours(img, [largest_contour], thickness=2, color=(0, 255, 255))
+    draw_contours(img, [largest_contour], color=(255, 255, 0, 255), thickness=2)
+    # cv2.drawContours(img, [largest_contour], -1, (255, 255, 0, 102), -1)
+    # cv2.drawContours(img, [largest_contour], -1, (255, 255, 0, 255), 2)
 
     return True, img
 

@@ -124,29 +124,26 @@ class SudokuScreen(Screen):
 
 
 class KivyCamera(Camera):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._format = "bgr"
-
     def on_tex(self, camera):
         height, width = camera.texture.height, camera.texture.width
 
         newvalue = np.frombuffer(camera.texture.pixels, np.uint8)
-        newvalue = newvalue.reshape(height, width, 4)
-        frame = cv2.cvtColor(newvalue, cv2.COLOR_RGBA2BGR)
+        frame = newvalue.reshape(height, width, 4)
+        # frame = cv2.cvtColor(frame, cv2.COLOR_RGBA2BGR)
 
         ret, frame_with_highlight = try_draw_sudoku_highlight(frame.copy())
         if ret:
             self.img = frame
 
         # convert it to texture
+        # frame_with_highlight = cv2.cvtColor(frame_with_highlight, cv2.COLOR_BGR2RGBA)
         buf1 = cv2.flip(frame_with_highlight, 0)
         buf = buf1.tobytes()
         image_texture = Texture.create(
             size=(frame_with_highlight.shape[1], frame_with_highlight.shape[0]),
-            colorfmt="bgr",
+            colorfmt="rgba",
         )
-        image_texture.blit_buffer(buf, colorfmt="bgr", bufferfmt="ubyte")
+        image_texture.blit_buffer(buf, colorfmt="rgba", bufferfmt="ubyte")
 
         # display image from the texture
         self.texture = texture = image_texture
@@ -165,7 +162,6 @@ class CameraScreen(Screen):
         timestr = time.strftime("%Y-%m-%d_%H-%M-%S")
         img_path = os.path.join(SudokuApp.inst.img_folder, "%s.png" % timestr)
         cv2.imwrite(img_path, self.my_camera.img)
-        # camera.export_to_png(img_path)
         new_sudoku = read_sudoku(self.my_camera.img)
         if new_sudoku is None:
             os.rename(img_path, img_path[:-4] + "_None.png")
@@ -177,6 +173,9 @@ class CameraScreen(Screen):
             SudokuApp.inst.sm.current = "sudoku"
             SudokuApp.inst.hide_candidates = True
             SudokuApp.inst.populate_candidates(True)
+
+    def on_stop(self):
+        self.my_camera.play = False
 
 
 class SudokuApp(App):
