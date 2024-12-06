@@ -47,7 +47,7 @@ sudoku = [
 ]
 
 
-t = Table(sudoku, empty=" ")
+t = Table()
 
 
 class SudokuWidget(GridLayout):
@@ -130,6 +130,7 @@ class KivyCamera(Camera):
         newvalue = np.frombuffer(camera.texture.pixels, np.uint8)
         frame = newvalue.reshape(height, width, 4)
         # frame = cv2.cvtColor(frame, cv2.COLOR_RGBA2BGR)
+        frame = cv2.flip(frame, 0)
 
         ret, frame_with_highlight = try_draw_sudoku_highlight(frame.copy())
         if ret:
@@ -137,7 +138,8 @@ class KivyCamera(Camera):
 
         # convert it to texture
         # frame_with_highlight = cv2.cvtColor(frame_with_highlight, cv2.COLOR_BGR2RGBA)
-        buf1 = cv2.flip(frame_with_highlight, 0)
+        # buf1 = cv2.flip(frame_with_highlight, 0)
+        buf1 = cv2.flip(frame_with_highlight, 1)
         buf = buf1.tobytes()
         image_texture = Texture.create(
             size=(frame_with_highlight.shape[1], frame_with_highlight.shape[0]),
@@ -183,8 +185,8 @@ class SudokuApp(App):
     sm = ScreenManager()
 
     def build(self):
-        self.sm.add_widget(SudokuScreen())
         self.sm.add_widget(CameraScreen())
+        self.sm.add_widget(SudokuScreen())
         return self.sm
 
     inst = None
@@ -367,7 +369,8 @@ if __name__ == "__main__":
     #     Config.set("graphics", "resizable", False)
     # Window.size = (810, 540)
     # Window.size = (2712, 1220)
-    Window.size = (2712 / 3, 1220 / 3)
+
+    # Window.size = (2712 / 3, 1220 / 3)
     # Window.size = (1220 / 3, 2712 / 3)
 
     # Poco 6 window size -> (2712, 1220)
