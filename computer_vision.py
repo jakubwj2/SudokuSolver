@@ -126,9 +126,6 @@ def try_draw_sudoku_highlight(img):
         return False, img
 
     draw_contours(img, [largest_contour], color=(255, 255, 0, 255), thickness=2)
-    # cv2.drawContours(img, [largest_contour], -1, (255, 255, 0, 102), -1)
-    # cv2.drawContours(img, [largest_contour], -1, (255, 255, 0, 255), 2)
-
     return True, img
 
 

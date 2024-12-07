@@ -142,7 +142,7 @@ class CameraScreen(Screen):
 
         timestr = time.strftime("%Y-%m-%d_%H-%M-%S")
         img_path = os.path.join(SudokuApp.inst.img_folder, "%s.png" % timestr)
-        cv2.imwrite(img_path, self.my_camera.img)
+        cv2.imwrite(img_path, cv2.cvtColor(self.my_camera.img, cv2.COLOR_RGBA2BGRA))
         new_sudoku = read_sudoku(self.my_camera.img)
         if new_sudoku is None:
             os.rename(img_path, img_path[:-4] + "_None.png")
