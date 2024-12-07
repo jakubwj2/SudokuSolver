@@ -21,7 +21,7 @@
             KivyCamera:
                 id: camera
                 resolution: 1920, 1080
-                play: root.transition_state == "in"
+                play: app.sm.current == "camera"
                 canvas.before:
                     PushMatrix
                     Rotate:

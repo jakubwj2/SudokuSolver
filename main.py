@@ -22,31 +22,6 @@ import os
 
 from sudoku import Table
 
-# sudoku = [
-#     [0, 0, 7, 9, 3, 0, 0, 0, 8],
-#     [6, 8, 0, 0, 0, 5, 0, 9, 0],
-#     [0, 0, 0, 0, 0, 0, 0, 0, 2],
-#     [0, 0, 0, 4, 0, 0, 0, 8, 0],
-#     [5, 0, 0, 1, 0, 6, 0, 3, 0],
-#     [0, 6, 0, 0, 0, 0, 0, 0, 0],
-#     [0, 0, 1, 0, 5, 4, 0, 0, 0],
-#     [0, 0, 9, 7, 0, 0, 0, 0, 1],
-#     [0, 0, 0, 0, 0, 0, 0, 7, 0],
-# ]
-
-sudoku = [
-    [0, 1, 6, 0, 0, 0, 0, 5, 0],
-    [0, 3, 0, 1, 0, 0, 0, 4, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 9],
-    [0, 0, 1, 0, 0, 3, 5, 0, 0],
-    [0, 0, 0, 7, 6, 4, 0, 0, 0],
-    [0, 0, 4, 9, 1, 0, 3, 0, 0],
-    [1, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 5, 0, 0, 0, 1, 0, 2, 0],
-    [0, 4, 0, 0, 5, 0, 8, 0, 0],
-]
-
-
 t = Table()
 
 
@@ -129,18 +104,16 @@ class KivyCamera(Camera):
 
         newvalue = np.frombuffer(camera.texture.pixels, np.uint8)
         frame = newvalue.reshape(height, width, 4)
-        # frame = cv2.cvtColor(frame, cv2.COLOR_RGBA2BGR)
-        frame = cv2.flip(frame, 0)
+        if platform == "android":
+            frame = cv2.flip(frame, 0)
 
         ret, frame_with_highlight = try_draw_sudoku_highlight(frame.copy())
         if ret:
             self.img = frame
 
         # convert it to texture
-        # frame_with_highlight = cv2.cvtColor(frame_with_highlight, cv2.COLOR_BGR2RGBA)
-        # buf1 = cv2.flip(frame_with_highlight, 0)
-        buf1 = cv2.flip(frame_with_highlight, 1)
-        buf = buf1.tobytes()
+        buf = cv2.flip(frame_with_highlight, 1).tobytes()
+
         image_texture = Texture.create(
             size=(frame_with_highlight.shape[1], frame_with_highlight.shape[0]),
             colorfmt="rgba",
@@ -365,13 +338,8 @@ class SudokuApp(App):
 
 
 if __name__ == "__main__":
-    # if platform == "win" or platform == "linux":
-    #     Config.set("graphics", "resizable", False)
-    # Window.size = (810, 540)
-    # Window.size = (2712, 1220)
-
-    # Window.size = (2712 / 3, 1220 / 3)
-    # Window.size = (1220 / 3, 2712 / 3)
-
     # Poco 6 window size -> (2712, 1220)
+    if platform == "win":
+        Window.size = (2712 / 3, 1220 / 3)
+
     SudokuApp().run()
