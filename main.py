@@ -99,6 +99,10 @@ class SudokuScreen(Screen):
 
 
 class KivyCamera(Camera):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.img = None
+
     def on_tex(self, camera):
         height, width = camera.texture.height, camera.texture.width
 
@@ -133,6 +137,8 @@ class CameraScreen(Screen):
         self.my_camera = self.ids["camera"]
 
     def capture_sudoku(self):
+        if self.my_camera.img is None:
+            return
 
         timestr = time.strftime("%Y-%m-%d_%H-%M-%S")
         img_path = os.path.join(SudokuApp.inst.img_folder, "%s.png" % timestr)
