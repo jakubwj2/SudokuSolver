@@ -2,7 +2,6 @@ import cv2
 import numpy as np
 import os
 
-# import matplotlib.pyplot as plt
 from model import TensorFlowModel
 
 
@@ -10,7 +9,6 @@ WIDTH = 450
 HEIGHT = 450
 
 path_to_model = "mnist_v03.tflite"
-# model = tf.keras.models.load_model("mnist_v02.keras")
 model = TensorFlowModel()
 model.load(os.path.join(os.getcwd(), path_to_model))
 
@@ -42,7 +40,7 @@ def largest_contour_area(contours):
         area = cv2.contourArea(contour)
         # We intend to increase the area by warping to a minimum of 63_504 (28^2*9^2) pixels
         # We are currently expanding the area to over 200_000 (for preprocessing purposes)
-        if area < 10_000 or area < max_area:
+        if area < 63_504 or area < max_area:
             continue
 
         peri = cv2.arcLength(contour, True)
