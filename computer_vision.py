@@ -164,6 +164,6 @@ def read_sudoku(img) -> np.ndarray | None:
 
 if __name__ == "__main__":
     IMG_PATH = "SudokuPhotos/2026-07-14_17-21-01.png"
-
-    array = read_sudoku(IMG_PATH)
+    img = cv2.imread(IMG_PATH)
+    array = read_sudoku(img)
     print(array)
