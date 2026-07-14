@@ -1,6 +1,10 @@
 numpy
 kivy
 pillow
-opencv-python
+opencv-python>=4.8,<5
 tensorflow
 pyjnius
+git+https://github.com/kivy/buildozer
+legacy-cgi
+setuptools
+cython==0.29.34
