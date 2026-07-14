@@ -2,7 +2,7 @@ numpy
 kivy
 pillow
 opencv-python>=4.8,<5
-tensorflow
+ai-edge-litert>=2.0
 pyjnius
 git+https://github.com/kivy/buildozer
 legacy-cgi

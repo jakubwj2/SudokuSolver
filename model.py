@@ -3,15 +3,6 @@ from kivy.utils import platform
 
 if platform == "android":
     from jnius import autoclass
-    from android.permissions import request_permissions, Permission
-
-    request_permissions(
-        [
-            Permission.CAMERA,
-            Permission.READ_EXTERNAL_STORAGE,
-            Permission.WRITE_EXTERNAL_STORAGE,
-        ]
-    )
 
     File = autoclass("java.io.File")
     Interpreter = autoclass("org.tensorflow.lite.Interpreter")
@@ -53,13 +44,15 @@ if platform == "android":
             return np.reshape(np.array(output.getFloatArray()), self.output_shape)
 
 else:
-    import tensorflow as tf
+    # Full TensorFlow + Kivy OpenGL segfaults on WSL after capture. LiteRT is TFLite-only.
+    from ai_edge_litert.interpreter import Interpreter as LiteRtInterpreter
 
     class TensorFlowModel:
         def load(self, model_filename, num_threads=None):
-            self.interpreter = tf.lite.Interpreter(
-                model_filename, num_threads=num_threads
-            )
+            kwargs = {"model_path": model_filename}
+            if num_threads is not None:
+                kwargs["num_threads"] = num_threads
+            self.interpreter = LiteRtInterpreter(**kwargs)
             self.interpreter.allocate_tensors()
 
         def resize_input(self, shape):

@@ -5,12 +5,14 @@ from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.popup import Popup
-from kivy.uix.camera import Camera
+from kivy.uix.image import Image
+from kivy.clock import Clock
 from kivy.animation import Animation
 from kivy.properties import StringProperty, BooleanProperty, ObjectProperty
 from kivy.core.window import Window
 from kivy import platform
 from kivy.graphics.texture import Texture
+from kivy.logger import Logger
 import numpy as np
 import cv2
 
@@ -23,6 +25,9 @@ import os
 from sudoku import Table
 
 t = Table()
+
+# Linux/desktop IP webcam (Android uses the device camera instead).
+IP_WEBCAM_URL = "http://192.168.1.226:8080/video"
 
 
 class SudokuWidget(GridLayout):
@@ -98,43 +103,157 @@ class SudokuScreen(Screen):
     pass
 
 
-class KivyCamera(Camera):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+class KivyCamera(Image):
+    """Preview + capture.
+
+    - Android: native device camera (Kivy CoreCamera)
+    - Linux/desktop: IP webcam URL via OpenCV VideoCapture
+    """
+
+    play = BooleanProperty(False)
+    index = ObjectProperty(0)
+    resolution = ObjectProperty((1280, 720))
+
+    def __init__(self, **kwargs):
         self.img = None
+        self._camera = None
+        self._cap = None
+        self._clock_ev = None
+        kwargs = dict(kwargs)
+        kwargs.pop("play", None)
+        index = kwargs.pop("index", 0)
+        resolution = kwargs.pop("resolution", (1920, 1080))
+        super().__init__(**kwargs)
+        self.index = index if index != -1 else 0
+        self.resolution = resolution
+        self.play = False
 
-    def on_tex(self, camera):
-        height, width = camera.texture.height, camera.texture.width
-
-        newvalue = np.frombuffer(camera.texture.pixels, np.uint8)
-        frame = newvalue.reshape(height, width, 4)
+    def start_capture(self):
+        self.stop_capture()
         if platform == "android":
-            frame = cv2.flip(frame, 0)
+            self._start_device_camera()
+        else:
+            self._start_ip_webcam()
 
-        ret, frame_with_highlight = try_draw_sudoku_highlight(frame.copy())
+    def stop_capture(self):
+        self.play = False
+        if self._clock_ev is not None:
+            self._clock_ev.cancel()
+            self._clock_ev = None
+        if self._camera is not None:
+            try:
+                self._camera.stop()
+            except Exception:
+                pass
+            self._camera = None
+        if self._cap is not None:
+            try:
+                self._cap.release()
+            except Exception:
+                pass
+            self._cap = None
+
+    def _start_device_camera(self):
+        from kivy.core.camera import Camera as CoreCamera
+
+        if self.index < 0:
+            return
+
+        # Android Camera.setPreviewSize only accepts supported sizes; portrait
+        # dims like 720x1280 typically fail with setParameters.
+        candidates = []
+        if self.resolution and self.resolution[0] > 0 and self.resolution[1] > 0:
+            candidates.append(tuple(self.resolution))
+        for size in ((1280, 720), (1920, 1080), (640, 480)):
+            if size not in candidates:
+                candidates.append(size)
+
+        last_exc = None
+        for width, height in candidates:
+            try:
+                self._camera = CoreCamera(
+                    index=self.index,
+                    resolution=(width, height),
+                    stopped=True,
+                )
+                self._camera.bind(on_texture=self._on_device_tex)
+                self._camera.start()
+                self.resolution = (width, height)
+                self.play = True
+                Logger.info(
+                    "Camera: opened device %s at %sx%s", self.index, width, height
+                )
+                return
+            except Exception as exc:
+                last_exc = exc
+                Logger.warning("Camera: open failed at %sx%s (%s)", width, height, exc)
+                self._camera = None
+
+        Logger.warning("Camera: device open failed (%s)", last_exc)
+
+    def _start_ip_webcam(self):
+        url = getattr(SudokuApp.inst, "camera_url", None) or IP_WEBCAM_URL
+        Logger.info("Camera: opening IP webcam %s", url)
+        self._cap = cv2.VideoCapture(url)
+        if not self._cap.isOpened():
+            Logger.warning("Camera: failed to open IP webcam %s", url)
+            self._cap = None
+            return
+        self.play = True
+        self._clock_ev = Clock.schedule_interval(self._on_ip_frame, 1 / 30)
+
+    def _process_frame_rgba(self, frame_rgba):
+        ret, frame_with_highlight = try_draw_sudoku_highlight(frame_rgba.copy())
         if ret:
-            self.img = frame
+            self.img = frame_rgba
 
-        # convert it to texture
         buf = cv2.flip(frame_with_highlight, 1).tobytes()
-
         image_texture = Texture.create(
             size=(frame_with_highlight.shape[1], frame_with_highlight.shape[0]),
             colorfmt="rgba",
         )
         image_texture.blit_buffer(buf, colorfmt="rgba", bufferfmt="ubyte")
-
-        # display image from the texture
-        self.texture = texture = image_texture
-        self.texture_size = list(texture.size)
+        self.texture = image_texture
+        self.texture_size = list(image_texture.size)
         self.canvas.ask_update()
+
+    def _on_device_tex(self, camera):
+        if camera.texture is None:
+            return
+        try:
+            height, width = camera.texture.height, camera.texture.width
+            pixels = np.frombuffer(camera.texture.pixels, np.uint8)
+            frame = pixels.reshape(height, width, 4)
+            frame = cv2.flip(frame, 0)
+            self._process_frame_rgba(frame)
+        except Exception as exc:
+            Logger.warning("Camera: device frame update failed (%s)", exc)
+
+    def _on_ip_frame(self, _dt):
+        if self._cap is None or not self._cap.isOpened():
+            return False
+        ret, frame_bgr = self._cap.read()
+        if not ret or frame_bgr is None:
+            return
+        try:
+            # Uncomment when using IP Webcam portrait mode
+            # frame_bgr = cv2.rotate(frame_bgr, cv2.ROTATE_90_ANTICLOCKWISE)
+            frame_rgba = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGBA)
+            self._process_frame_rgba(frame_rgba)
+        except Exception as exc:
+            Logger.warning("Camera: IP frame update failed (%s)", exc)
 
 
 class CameraScreen(Screen):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.my_camera = self.ids["camera"]
+
+    def on_enter(self, *args):
+        self.my_camera.start_capture()
+
+    def on_leave(self, *args):
+        self.my_camera.stop_capture()
 
     def capture_sudoku(self):
         if self.my_camera.img is None:
@@ -155,34 +274,37 @@ class CameraScreen(Screen):
             SudokuApp.inst.hide_candidates = True
             SudokuApp.inst.populate_candidates(True)
 
-    def on_stop(self):
-        self.my_camera.play = False
-
 
 class SudokuApp(App):
-
-    sm = ScreenManager()
-
     def build(self):
-        self.sm.add_widget(CameraScreen())
+        self.sm = ScreenManager()
         self.sm.add_widget(SudokuScreen())
+        self.sm.add_widget(CameraScreen())
+        self.sm.current = "sudoku"
         return self.sm
 
     inst = None
 
     def __init__(self, **kwargs):
-        if SudokuApp.inst is None:
-            SudokuApp.inst = self
-        else:
-            del self
-            return
         super().__init__(**kwargs)
+        SudokuApp.inst = self
 
         self.selected_number = None
         self.selected_cell = None
         self.hide_candidates = False
+        self.camera_url = IP_WEBCAM_URL
 
         if platform == "android":
+            # Do not defer this to model import — camera preview needs it immediately.
+            from android.permissions import request_permissions, Permission
+
+            request_permissions(
+                [
+                    Permission.CAMERA,
+                    Permission.READ_EXTERNAL_STORAGE,
+                    Permission.WRITE_EXTERNAL_STORAGE,
+                ]
+            )
             self.img_folder = os.path.join("/sdcard", "DCIM", "SudokuPhotos")
         else:
             self.img_folder = os.path.join(os.getcwd(), "SudokuPhotos")
@@ -191,13 +313,20 @@ class SudokuApp(App):
             os.makedirs(self.img_folder)
 
     def on_start(self):
-        self.buttons = ToggleButtonBehavior.get_widgets("sudoku_cells")
+        self.buttons = list(ToggleButtonBehavior.get_widgets("sudoku_cells"))
+        if not self.buttons:
+            Logger.warning("SudokuApp: no sudoku cells found at start")
+            return
         self.repopulate_sudoku()
         self.highlight_placeable(None)
         self.populate_candidates(self.hide_candidates)
 
     def on_stop(self):
-        del self.buttons
+        if hasattr(self, "buttons"):
+            del self.buttons
+        camera_screen = self.sm.get_screen("camera") if self.sm else None
+        if camera_screen is not None:
+            camera_screen.my_camera.stop_capture()
 
     def repopulate_sudoku(self):
         for button, number, original in zip(
@@ -345,7 +474,7 @@ class SudokuApp(App):
 
 if __name__ == "__main__":
     # Poco 6 window size -> (2712, 1220)
-    if platform == "win":
+    if platform in ("win", "linux"):
         Window.size = (2712 / 3, 1220 / 3)
 
     SudokuApp().run()

@@ -86,7 +86,7 @@ def split_boxes(img):
 
 
 def draw_contours(
-    frame: np.array,
+    frame: np.ndarray,
     contours: tuple,
     indices: int = -1,
     thickness: int = 1,
@@ -128,7 +128,6 @@ def try_draw_sudoku_highlight(img):
 
 
 def read_sudoku(img) -> np.ndarray | None:
-
     thresh = sudoku_pre_processing(img)
     contours, hierarchy = cv2.findContours(
         thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
@@ -160,21 +159,11 @@ def read_sudoku(img) -> np.ndarray | None:
 
     result = Y_pred_classes.reshape(9, 9)
 
-    # print(result)
-
-    # for pred, cell in zip(Y_pred_classes, cells):
-    #     plt.imshow(cell, cmap="gray", vmin=0, vmax=1)
-    #     plt.axis("off")
-    #     plt.show()
-
-    # plt.imshow(imgWarpGray, cmap="gray", vmin=0, vmax=255)
-    # plt.axis("off")
-    # plt.show()
     return result
 
 
 if __name__ == "__main__":
-    IMG_PATH = "sudoku_screenshots\\sudoku_7_4.png"
+    IMG_PATH = "SudokuPhotos/2026-07-14_17-21-01.png"
 
     array = read_sudoku(IMG_PATH)
     print(array)

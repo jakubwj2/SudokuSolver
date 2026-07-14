@@ -22,7 +22,7 @@ source.include_exts = py,png,jpg,kv,atlas,tflite
 #source.exclude_exts = spec
 
 # (list) List of directory to exclude (let empty to not exclude anything)
-source.exclude_dirs = bin, .venv, .vscode, .buildozer, __pycache__
+source.exclude_dirs = bin, .venv, .vscode, .cursor, .buildozer, __pycache__, sudoku_photos, SudokuPhotos
 
 # (list) List of exclusions using pattern matching
 # Do not prefix with './'
@@ -202,7 +202,7 @@ android.permissions = android.permission.CAMERA, android.permission.WRITE_EXTERN
 #android.add_resources =
 
 # (list) Gradle dependencies to add
-android.gradle_dependencies = org.tensorflow:tensorflow-lite:0.1.2-nightly,org.tensorflow:tensorflow-lite-support:+
+android.gradle_dependencies = org.tensorflow:tensorflow-lite:2.14.0,org.tensorflow:tensorflow-lite-support:0.4.4
 
 
 # (bool) Enable AndroidX support. Enable when 'android.gradle_dependencies'
@@ -272,10 +272,10 @@ android.gradle_dependencies = org.tensorflow:tensorflow-lite:0.1.2-nightly,org.t
 #android.uses_library =
 
 # (str) Android logcat filters to use
-#android.logcat_filters = *:S python:D
+android.logcat_filters = *:S python:D
 
 # (bool) Android logcat only display log for activity's pid
-#android.logcat_pid_only = False
+android.logcat_pid_only = True
 
 # (str) Android additional adb arguments
 #android.adb_args = -H host.docker.internal
