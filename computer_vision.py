@@ -1,16 +1,15 @@
 import cv2
 import numpy as np
-import os
 
 from model import TensorFlowModel
+from app_config import get_config
+from typing import Sequence, Any
+
+MatLike = np.ndarray[Any]
 
 
-WIDTH = 450
-HEIGHT = 450
-
-path_to_model = "mnist_v03.tflite"
 model = TensorFlowModel()
-model.load(os.path.join(os.getcwd(), path_to_model))
+model.load(str(get_config().paths.model))
 
 
 def sudoku_pre_processing(img):
@@ -33,9 +32,9 @@ def cell_pre_processing(img):
     return img
 
 
-def largest_contour_area(contours):
-    biggest = None
-    max_area = 0
+def largest_contour_area(contours: Sequence[MatLike]) -> tuple[MatLike | None, float]:
+    biggest: MatLike | None = None
+    max_area: float = 0
     for contour in contours:
         area = cv2.contourArea(contour)
         # We intend to increase the area by warping to a minimum of 63_504 (28^2*9^2) pixels
@@ -87,7 +86,7 @@ def split_boxes(img):
 
 def draw_contours(
     frame: np.ndarray,
-    contours: tuple,
+    contours: Sequence[MatLike],
     indices: int = -1,
     thickness: int = 1,
     color: tuple = (0, 0, 255),
@@ -120,7 +119,7 @@ def try_draw_sudoku_highlight(img):
     )
 
     largest_contour, area = largest_contour_area(contours)
-    if area == 0:
+    if area == 0 or largest_contour is None:
         return False, img
 
     draw_contours(img, [largest_contour], color=(255, 255, 0, 255), thickness=2)
@@ -141,10 +140,15 @@ def read_sudoku(img) -> np.ndarray | None:
 
     largest_contour = reorder_points(largest_contour)
 
-    pts1 = np.float32(largest_contour)
-    pts2 = np.float32([[0, 0], [WIDTH, 0], [0, HEIGHT], [WIDTH, HEIGHT]])
+    width = 450
+    height = 450
+
+    pts1 = np.array(largest_contour, dtype=np.float32)
+    pts2 = np.array(
+        [[0, 0], [width, 0], [0, height], [width, height]], dtype=np.float32
+    )
     matrix = cv2.getPerspectiveTransform(pts1, pts2)
-    imgWarpColored = cv2.warpPerspective(img, matrix, (WIDTH, HEIGHT))
+    imgWarpColored = cv2.warpPerspective(img, matrix, (width, height))
     imgWarpGray = cv2.cvtColor(imgWarpColored, cv2.COLOR_BGR2GRAY)
 
     boxes = split_boxes(imgWarpGray)

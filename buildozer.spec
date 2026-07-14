@@ -13,7 +13,7 @@ package.domain = com.squirrellegend
 source.dir = .
 
 # (list) Source files to include (let empty to include all the files)
-source.include_exts = py,png,jpg,kv,atlas,tflite
+source.include_exts = py,png,jpg,kv,atlas,tflite,json
 
 # (list) List of inclusions using pattern matching
 #source.include_patterns = assets/*,images/*.png

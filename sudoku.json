@@ -1,0 +1,10 @@
+{
+  "camera": {
+    "ip_webcam_url": "http://192.168.1.226:8080/video"
+  },
+  "paths": {
+    "model": "mnist_v03.tflite",
+    "photos_dir": "SudokuPhotos",
+    "photos_dir_android": "/sdcard/DCIM/SudokuPhotos"
+  }
+}

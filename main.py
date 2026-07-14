@@ -13,6 +13,7 @@ from kivy.core.window import Window
 from kivy import platform
 from kivy.graphics.texture import Texture
 from kivy.logger import Logger
+from kivy.event import EventDispatcher
 import numpy as np
 import cv2
 
@@ -23,11 +24,9 @@ import time
 import os
 
 from sudoku import Table
+from app_config import get_config
 
 t = Table()
-
-# Linux/desktop IP webcam (Android uses the device camera instead).
-IP_WEBCAM_URL = "http://192.168.1.226:8080/video"
 
 
 class SudokuWidget(GridLayout):
@@ -45,7 +44,7 @@ class SudokuWidget(GridLayout):
             sections[x // 3][y // 3].add_widget(button)
 
 
-class SudokuCell(ToggleButtonBehavior, AnchorLayout):
+class SudokuCell(ToggleButtonBehavior, AnchorLayout):  # pyright: ignore[reportIncompatibleMethodOverride]
     is_locked = BooleanProperty(True)
     is_highlighted = BooleanProperty(True)
     number = ObjectProperty(int)
@@ -57,7 +56,7 @@ class SudokuCell(ToggleButtonBehavior, AnchorLayout):
         self.group = "sudoku_cells"
 
     def on_state(self, widget, value):
-        SudokuApp.inst.on_select_cell(self)
+        get_app().on_select_cell(self)
 
 
 class DialWidget(GridLayout):
@@ -67,7 +66,7 @@ class DialWidget(GridLayout):
             self.add_widget(
                 DialButton(
                     number=i + 1,
-                    on_press=lambda x: SudokuApp.inst.on_select_number(x),
+                    on_press=lambda x: get_app().on_select_number(x),
                 )
             )
 
@@ -85,11 +84,11 @@ class ConfirmPopup(Popup):
     __events__ = ("on_ok", "on_cancel")
 
     def ok(self):
-        self.dispatch("on_ok")
+        EventDispatcher.dispatch(self, "on_ok")
         self.dismiss()
 
     def cancel(self):
-        self.dispatch("on_cancel")
+        EventDispatcher.dispatch(self, "on_cancel")
         self.dismiss()
 
     def on_ok(self):
@@ -192,7 +191,7 @@ class KivyCamera(Image):
         Logger.warning("Camera: device open failed (%s)", last_exc)
 
     def _start_ip_webcam(self):
-        url = getattr(SudokuApp.inst, "camera_url", None) or IP_WEBCAM_URL
+        url = get_app().camera_url
         Logger.info("Camera: opening IP webcam %s", url)
         self._cap = cv2.VideoCapture(url)
         if not self._cap.isOpened():
@@ -215,7 +214,6 @@ class KivyCamera(Image):
         image_texture.blit_buffer(buf, colorfmt="rgba", bufferfmt="ubyte")
         self.texture = image_texture
         self.texture_size = list(image_texture.size)
-        self.canvas.ask_update()
 
     def _on_device_tex(self, camera):
         if camera.texture is None:
@@ -260,19 +258,20 @@ class CameraScreen(Screen):
             return
 
         timestr = time.strftime("%Y-%m-%d_%H-%M-%S")
-        img_path = os.path.join(SudokuApp.inst.img_folder, "%s.png" % timestr)
+        app = get_app()
+        img_path = os.path.join(app.img_folder, "%s.png" % timestr)
         cv2.imwrite(img_path, cv2.cvtColor(self.my_camera.img, cv2.COLOR_RGBA2BGRA))
         new_sudoku = read_sudoku(self.my_camera.img)
         if new_sudoku is None:
             os.rename(img_path, img_path[:-4] + "_None.png")
         else:
             t.__init__(new_sudoku)
-            t.original_array = np.zeros((9, 9))
-            SudokuApp.inst.repopulate_sudoku()
-            SudokuApp.inst.highlight_placeable(None)
-            SudokuApp.inst.sm.current = "sudoku"
-            SudokuApp.inst.hide_candidates = True
-            SudokuApp.inst.populate_candidates(True)
+            t.original_array = np.zeros((9, 9), dtype=np.int8)
+            app.repopulate_sudoku()
+            app.highlight_placeable(None)
+            app.sm.current = "sudoku"
+            app.hide_candidates = True
+            app.populate_candidates(True)
 
 
 class SudokuApp(App):
@@ -283,20 +282,21 @@ class SudokuApp(App):
         self.sm.current = "sudoku"
         return self.sm
 
-    inst = None
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        SudokuApp.inst = self
 
         self.selected_number = None
         self.selected_cell = None
         self.hide_candidates = False
-        self.camera_url = IP_WEBCAM_URL
+        config = get_config()
+        # Linux/desktop IP webcam (Android uses the device camera instead).
+        self.camera_url = str(config.camera.ip_webcam_url)
 
         if platform == "android":
-            # Do not defer this to model import — camera preview needs it immediately.
-            from android.permissions import request_permissions, Permission
+            from android.permissions import (  # pyright: ignore[reportMissingModuleSource]
+                request_permissions,
+                Permission,
+            )
 
             request_permissions(
                 [
@@ -305,9 +305,9 @@ class SudokuApp(App):
                     Permission.WRITE_EXTERNAL_STORAGE,
                 ]
             )
-            self.img_folder = os.path.join("/sdcard", "DCIM", "SudokuPhotos")
+            self.img_folder = str(config.paths.photos_dir_android)
         else:
-            self.img_folder = os.path.join(os.getcwd(), "SudokuPhotos")
+            self.img_folder = str(config.paths.photos_dir)
 
         if not os.path.exists(self.img_folder):
             os.makedirs(self.img_folder)
@@ -470,6 +470,13 @@ class SudokuApp(App):
         if self.selected_number is not None:
             self.selected_number.state = "normal"
             self.selected_number = None
+
+
+def get_app() -> SudokuApp:
+    app = App.get_running_app()
+    if not isinstance(app, SudokuApp):
+        raise RuntimeError("SudokuApp is not running")
+    return app
 
 
 if __name__ == "__main__":

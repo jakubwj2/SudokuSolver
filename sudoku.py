@@ -15,7 +15,7 @@ class Table:
         self.gen_candidates()
         self.solutions = list()
 
-    def is_empty(self, row_idx: int, column_idx: int) -> bool:
+    def is_empty(self, row_idx: int, column_idx: int) -> np.bool:
         return self.sudoku_array[row_idx, column_idx] == 0
 
     def place(
@@ -32,7 +32,7 @@ class Table:
     def get_section(self, array: np.ndarray, x: int, y: int) -> np.ndarray:
         return array[x * 3 : (x + 1) * 3, y * 3 : (y + 1) * 3]
 
-    def check_placeable(self, number: int, row_idx: int, column_idx: int) -> bool:
+    def check_placeable(self, number: int, row_idx: int, column_idx: int) -> np.bool:
         return (
             self.is_empty(row_idx, column_idx)
             and np.all(self.sudoku_array[row_idx, :] != number)
@@ -284,7 +284,7 @@ class Table:
                     result = False
         return result
 
-    def num_filled_cells(self, array) -> int:
+    def num_filled_cells(self, array) -> np.intp:
         return np.count_nonzero(array)
 
     def num_candidates(self) -> int:
@@ -328,11 +328,7 @@ class Table:
             for y in range(9):
                 if y % 3 == 0:
                     result += "| "
-                result += (
-                    empty
-                    if isinstance(array[x, y], np.int64) and array[x, y] == 0
-                    else str(array[x, y])
-                )
+                result += empty if array[x, y] == 0 else str(array[x, y])
                 result += " "
             result += "|"
             yield result
