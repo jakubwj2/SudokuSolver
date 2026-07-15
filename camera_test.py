@@ -1,14 +1,14 @@
 #! ./.venv/bin/python
 from __future__ import annotations
 
+import cv2
+import numpy as np
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.graphics.texture import Texture
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.image import Image
 from kivy.uix.label import Label
-import cv2
-import numpy as np
 
 from app_config import get_config
 

@@ -1,18 +1,25 @@
+from typing import Sequence
+
 import cv2
 import numpy as np
 
-from model import TensorFlowModel
 from app_config import get_config
-from typing import Sequence, Any
+from recognizers import get_digit_recognizer
 
-MatLike = np.ndarray[Any]
-
-
-model = TensorFlowModel()
+model = get_digit_recognizer()
 model.load(str(get_config().paths.model))
 
 
-def sudoku_pre_processing(img):
+def sudoku_pre_processing(img: np.ndarray) -> np.ndarray:
+    """
+    Preprocess the image to make Computer Vision more accurate and consistent.
+
+    Args:
+        img (np.ndarray): The sudoku image to preprocess.
+
+    Returns:
+        np.ndarray: The preprocessed sudoku image.
+    """
     img_gray = cv2.cvtColor(img, cv2.COLOR_RGBA2GRAY)
     img_blur = cv2.GaussianBlur(img_gray, (5, 5), 1)
     img_thresh = cv2.adaptiveThreshold(
@@ -21,7 +28,16 @@ def sudoku_pre_processing(img):
     return img_thresh
 
 
-def cell_pre_processing(img):
+def cell_pre_processing(img: np.ndarray) -> np.ndarray:
+    """
+    Preprocess the individual cells to make Machine Learning more accurate and consistent.
+
+    Args:
+        img (np.ndarray): The individual cell image to preprocess.
+
+    Returns:
+        np.ndarray: The preprocessed individual cell image.
+    """
     crop = 7
     img = img[crop:-crop, crop:-crop]
     img = cv2.resize(img, (28, 28))
@@ -32,8 +48,18 @@ def cell_pre_processing(img):
     return img
 
 
-def largest_contour_area(contours: Sequence[MatLike]) -> tuple[MatLike | None, float]:
-    biggest: MatLike | None = None
+def largest_contour_area(contours: Sequence[np.ndarray]) -> np.ndarray | None:
+    """
+    Find the largest contour from a list of contours.
+
+    Args:
+        contours (Sequence[np.ndarray]): A list of contours to find the largest from.
+
+    Returns:
+        tuple[np.ndarray | None, float]: The largest contour and its area.
+    """
+
+    largest_contour: np.ndarray | None = None
     max_area: float = 0
     for contour in contours:
         area = cv2.contourArea(contour)
@@ -42,12 +68,12 @@ def largest_contour_area(contours: Sequence[MatLike]) -> tuple[MatLike | None, f
         if area < 63_504 or area < max_area:
             continue
 
-        peri = cv2.arcLength(contour, True)
-        approx = cv2.approxPolyDP(contour, 0.02 * peri, True)
-        if len(approx) != 4:
+        perimeter = cv2.arcLength(contour, True)
+        simplified_contour = cv2.approxPolyDP(contour, 0.02 * perimeter, True)
+        if len(simplified_contour) != 4:
             continue
 
-        x, y, w, h = cv2.boundingRect(approx)
+        x, y, w, h = cv2.boundingRect(simplified_contour)
         aspect_ratio = float(w) / h
         if aspect_ratio < 0.9:
             continue
@@ -56,13 +82,22 @@ def largest_contour_area(contours: Sequence[MatLike]) -> tuple[MatLike | None, f
         if not bb_filled:
             continue
 
-        biggest = approx
+        largest_contour = simplified_contour
         max_area = area
 
-    return biggest, max_area
+    return largest_contour
 
 
-def reorder_points(points):
+def reorder_points(points: np.ndarray) -> np.ndarray:
+    """
+    # Order the points of a countour by their widht and then by their height.
+
+    Args:
+        points (np.ndarray): The points to reorder.
+
+    Returns:
+        np.ndarray: The reordered points in the order of top-left, top-right, bottom-right, bottom-left.
+    """
     points = points.reshape((4, 2))
     new_points = np.zeros((4, 1, 2), dtype=np.int32)
 
@@ -76,7 +111,16 @@ def reorder_points(points):
     return new_points
 
 
-def split_boxes(img):
+def split_boxes(img: np.ndarray) -> list[np.ndarray]:
+    """
+    Split the sudoku into 81 individual cells.
+
+    Args:
+        img (np.ndarray): The sudoku image to split.
+
+    Returns:
+        list[np.ndarray]: A flattened list of individual cells.
+    """
     boxes = []
     for row in np.vsplit(img, 9):
         for box in np.hsplit(row, 9):
@@ -86,12 +130,12 @@ def split_boxes(img):
 
 def draw_contours(
     frame: np.ndarray,
-    contours: Sequence[MatLike],
+    contours: Sequence[np.ndarray],
     indices: int = -1,
     thickness: int = 1,
     color: tuple = (0, 0, 255),
     alpha: float = 0.4,
-):
+) -> None:
     """
     Draw in-place some contours in a frame.
 
@@ -112,29 +156,47 @@ def draw_contours(
     cv2.drawContours(frame, contours, indices, color, thickness)
 
 
-def try_draw_sudoku_highlight(img):
+def try_draw_sudoku_highlight(img: np.ndarray) -> tuple[bool, np.ndarray]:
+    """
+    Try to draw a highlight around the sudoku.
+
+    Args:
+        img (np.ndarray): The sudoku image to draw the highlight on.
+
+    Returns:
+        tuple[bool, np.ndarray]: A tuple containing a boolean indicating success and the image with the highlight.
+    """
     thresh = sudoku_pre_processing(img)
     contours, hierarchy = cv2.findContours(
         thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
     )
 
-    largest_contour, area = largest_contour_area(contours)
-    if area == 0 or largest_contour is None:
+    largest_contour = largest_contour_area(contours)
+    if largest_contour is None:
         return False, img
 
     draw_contours(img, [largest_contour], color=(255, 255, 0, 255), thickness=2)
     return True, img
 
 
-def read_sudoku(img) -> np.ndarray | None:
+def read_sudoku(img: np.ndarray) -> np.ndarray | None:
+    """
+    Read the sudoku from the image.
+
+    Args:
+        img (np.ndarray): The sudoku image to read.
+
+    Returns:
+        np.ndarray | None: The sudoku array or None if no sudoku is found.
+    """
     thresh = sudoku_pre_processing(img)
     contours, hierarchy = cv2.findContours(
         thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
     )
 
-    largest_contour, area = largest_contour_area(contours)
+    largest_contour = largest_contour_area(contours)
 
-    if area == 0:
+    if largest_contour is None:
         print("No sudoku found!")
         return None
 
@@ -157,7 +219,7 @@ def read_sudoku(img) -> np.ndarray | None:
     predictions = []
 
     for cell in cells:
-        predictions.append(model.pred([cell]))
+        predictions.append(model.pred(np.array([cell])))
 
     Y_pred_classes = np.argmax(predictions, axis=2)
 
@@ -168,6 +230,6 @@ def read_sudoku(img) -> np.ndarray | None:
 
 if __name__ == "__main__":
     IMG_PATH = "SudokuPhotos/2026-07-14_17-21-01.png"
-    img = cv2.imread(IMG_PATH)
+    img = np.array(cv2.imread(IMG_PATH))
     array = read_sudoku(img)
     print(array)

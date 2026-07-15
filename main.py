@@ -1,35 +1,42 @@
-from kivy.app import App
-from kivy.uix.behaviors.togglebutton import ToggleButtonBehavior
-from kivy.uix.screenmanager import ScreenManager, Screen
-from kivy.uix.togglebutton import ToggleButton
-from kivy.uix.gridlayout import GridLayout
-from kivy.uix.anchorlayout import AnchorLayout
-from kivy.uix.popup import Popup
-from kivy.uix.image import Image
-from kivy.clock import Clock
-from kivy.animation import Animation
-from kivy.properties import StringProperty, BooleanProperty, ObjectProperty
-from kivy.core.window import Window
-from kivy import platform
-from kivy.graphics.texture import Texture
-from kivy.logger import Logger
-from kivy.event import EventDispatcher
-import numpy as np
-import cv2
+from __future__ import annotations
 
+import os
+import time
 from itertools import product
 
-from computer_vision import read_sudoku, try_draw_sudoku_highlight
-import time
-import os
+import cv2
+import numpy as np
+from kivy import platform
+from kivy.animation import Animation
+from kivy.app import App
+from kivy.clock import Clock
+from kivy.core.window import Window
+from kivy.event import EventDispatcher
+from kivy.graphics.texture import Texture
+from kivy.logger import Logger
+from kivy.properties import BooleanProperty, ObjectProperty, StringProperty
+from kivy.uix.anchorlayout import AnchorLayout
+from kivy.uix.behaviors.togglebutton import ToggleButtonBehavior
+from kivy.uix.button import Button
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.image import Image
+from kivy.uix.popup import Popup
+from kivy.uix.screenmanager import Screen, ScreenManager
+from kivy.uix.togglebutton import ToggleButton
 
-from sudoku import Table
 from app_config import get_config
+from computer_vision import read_sudoku, try_draw_sudoku_highlight
+from sudoku import Table
+from utils import get_app_or_throw
 
 t = Table()
 
 
 class SudokuWidget(GridLayout):
+    """
+    A widget that displays a Sudoku grid.
+    """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         sections = [[] for _ in range(3)]
@@ -45,41 +52,51 @@ class SudokuWidget(GridLayout):
 
 
 class SudokuCell(ToggleButtonBehavior, AnchorLayout):  # pyright: ignore[reportIncompatibleMethodOverride]
-    is_locked = BooleanProperty(True)
-    is_highlighted = BooleanProperty(True)
-    number = ObjectProperty(int)
-    candidate_list = StringProperty("")
+    """
+    A cell in the Sudoku grid.
+    """
 
-    def __init__(self, x, y, *args, **kwargs):
+    is_locked: bool = BooleanProperty(True)
+    is_highlighted: bool = BooleanProperty(True)
+    number: int = ObjectProperty(int)
+    candidate_list: str = StringProperty("")
+
+    def __init__(self, x: int, y: int, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.idx = (x, y)
         self.group = "sudoku_cells"
 
-    def on_state(self, widget, value):
-        get_app().on_select_cell(self)
+    def on_state(self, widget: SudokuCell, value: str):
+        get_app_or_throw().on_select_cell(self)
 
 
 class DialWidget(GridLayout):
+    """A widget that displays a dial for selecting a number."""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for i in range(9):
             self.add_widget(
                 DialButton(
                     number=i + 1,
-                    on_press=lambda x: get_app().on_select_number(x),
+                    on_press=lambda x: get_app_or_throw().on_select_number(x),
                 )
             )
 
 
 class DialButton(ToggleButton):
-    number = ObjectProperty(int)
+    """A button for selecting a number."""
+
+    number: int = ObjectProperty(int)
 
 
 class ConfirmPopup(Popup):
-    text = StringProperty("")
+    """A popup for confirming an action."""
 
-    ok_text = StringProperty("OK")
-    cancel_text = StringProperty("Cancel")
+    text: str = StringProperty("")
+
+    ok_text: str = StringProperty("OK")
+    cancel_text: str = StringProperty("Cancel")
 
     __events__ = ("on_ok", "on_cancel")
 
@@ -99,11 +116,13 @@ class ConfirmPopup(Popup):
 
 
 class SudokuScreen(Screen):
+    """A screen for displaying the Sudoku grid, number dial, and buttons with actions."""
+
     pass
 
 
 class KivyCamera(Image):
-    """Preview + capture.
+    """A widget that displays a camera preview.
 
     - Android: native device camera (Kivy CoreCamera)
     - Linux/desktop: IP webcam URL via OpenCV VideoCapture
@@ -191,7 +210,7 @@ class KivyCamera(Image):
         Logger.warning("Camera: device open failed (%s)", last_exc)
 
     def _start_ip_webcam(self):
-        url = get_app().camera_url
+        url = get_app_or_throw().camera_url
         Logger.info("Camera: opening IP webcam %s", url)
         self._cap = cv2.VideoCapture(url)
         if not self._cap.isOpened():
@@ -243,6 +262,8 @@ class KivyCamera(Image):
 
 
 class CameraScreen(Screen):
+    """A screen for displaying the camera preview and capturing images."""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.my_camera = self.ids["camera"]
@@ -258,7 +279,7 @@ class CameraScreen(Screen):
             return
 
         timestr = time.strftime("%Y-%m-%d_%H-%M-%S")
-        app = get_app()
+        app = get_app_or_throw()
         img_path = os.path.join(app.img_folder, "%s.png" % timestr)
         cv2.imwrite(img_path, cv2.cvtColor(self.my_camera.img, cv2.COLOR_RGBA2BGRA))
         new_sudoku = read_sudoku(self.my_camera.img)
@@ -274,7 +295,20 @@ class CameraScreen(Screen):
             app.populate_candidates(True)
 
 
+class OperationButton(Button):
+    """A button for performing an operation."""
+
+    text: str = StringProperty("")
+
+
 class SudokuApp(App):
+    """The main application for the Sudoku solver.
+
+    This app contains two screens:
+    - a Sudoku grid, number dial, and buttons with actions.
+    - a camera preview and button to capture images.
+    """
+
     def build(self):
         self.sm = ScreenManager()
         self.sm.add_widget(SudokuScreen())
@@ -294,8 +328,8 @@ class SudokuApp(App):
 
         if platform == "android":
             from android.permissions import (  # pyright: ignore[reportMissingModuleSource]
-                request_permissions,
                 Permission,
+                request_permissions,
             )
 
             request_permissions(
@@ -338,12 +372,12 @@ class SudokuApp(App):
             button.is_locked = original != 0
             self.populate_candidates(self.hide_candidates)
 
-    def highlight_placeable(self, number):
+    def highlight_placeable(self, number: int | None):
         for button, placeable in zip(self.buttons, t.get_placeable_cells(number)):
             button.is_highlighted = placeable
         self.populate_candidates(self.hide_candidates)
 
-    def on_solve(self, instance):
+    def on_solve(self, instance: OperationButton):
         if instance.text == "Solve":
             t.solve()
             instance.text = "Restart"
@@ -356,12 +390,12 @@ class SudokuApp(App):
         self.deselect_cell()
         self.deselect_number()
 
-    def on_lock(self, instance):
+    def on_lock(self, instance: OperationButton):
         t.original_array = t.sudoku_array
         t.reset()
         self.repopulate_sudoku()
 
-    def on_filter(self, instance):
+    def on_filter(self, instance: OperationButton):
         t.filter_candidates()
         # t.find_new_values()
         self.highlight_placeable(
@@ -369,7 +403,7 @@ class SudokuApp(App):
         )
         self.deselect_cell()
 
-    def on_clear(self, instance):
+    def on_clear(self, _instance):
         if self.selected_cell is not None:
             x, y = self.selected_cell.idx
             if t.original_array[x, y] == 0:
@@ -377,7 +411,7 @@ class SudokuApp(App):
                 self.buttons[x * 9 + y].number = 0
                 return
 
-        def clear_all(instance):
+        def clear_all(_instance: OperationButton):
             t.__init__()
             self.repopulate_sudoku()
             self.highlight_placeable(None)
@@ -389,7 +423,7 @@ class SudokuApp(App):
         )
         popup.open()
 
-    def on_validate(self, instance):
+    def on_validate(self, instance: OperationButton):
         anim = Animation(
             background_color=(
                 (0, 1, 0, 1) if t.validate(t.sudoku_array) else (1, 0, 0, 1)
@@ -399,7 +433,7 @@ class SudokuApp(App):
         anim += Animation(background_color=instance.background_color, duration=0.1)
         anim.start(instance)
 
-    def on_select_number(self, instance):
+    def on_select_number(self, instance: DialButton):
         if instance.state == "normal":
             self.selected_number = None
             self.highlight_placeable(None)
@@ -409,7 +443,7 @@ class SudokuApp(App):
             if self.place_number():
                 self.deselect_number()
 
-    def on_select_cell(self, instance):
+    def on_select_cell(self, instance: SudokuCell):
         if instance.is_locked:
             instance.state = "normal"
             self.deselect_cell()
@@ -422,11 +456,11 @@ class SudokuApp(App):
         if self.place_number():
             self.deselect_cell()
 
-    def on_show_candidates(self, instance):
+    def on_show_candidates(self, instance: OperationButton):
         self.hide_candidates = not self.hide_candidates
         self.populate_candidates(self.hide_candidates)
 
-    def populate_candidates(self, hide):
+    def populate_candidates(self, hide: bool):
         for button, candidates in zip(self.buttons, t.candidates.flatten()):
             candidate_list = ""
             if candidates is not None and not hide:
@@ -470,13 +504,6 @@ class SudokuApp(App):
         if self.selected_number is not None:
             self.selected_number.state = "normal"
             self.selected_number = None
-
-
-def get_app() -> SudokuApp:
-    app = App.get_running_app()
-    if not isinstance(app, SudokuApp):
-        raise RuntimeError("SudokuApp is not running")
-    return app
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlparse
 
-CONFIG_PATH = Path(__file__).resolve().parent / "sudoku.json"
+CONFIG_PATH = Path(__file__).resolve().parent / "config.json"
 _ROOT = CONFIG_PATH.parent
 _URL_SCHEMES = frozenset({"http", "https", "rtsp"})
 
@@ -63,13 +63,17 @@ def _parse_paths(data: dict) -> PathsConfig:
     return PathsConfig(
         model=_resolve_path(_require_str(data, "model", "paths")),
         photos_dir=_resolve_path(_require_str(data, "photos_dir", "paths")),
-        photos_dir_android=Path(
-            _require_str(data, "photos_dir_android", "paths")
-        ),
+        photos_dir_android=Path(_require_str(data, "photos_dir_android", "paths")),
     )
 
 
 def get_config() -> AppConfig:
+    """
+    Get the configuration for the app.
+
+    Returns:
+        AppConfig: The configuration for the app.
+    """
     if not CONFIG_PATH.is_file():
         raise FileNotFoundError(f"Missing config file: {CONFIG_PATH}")
 

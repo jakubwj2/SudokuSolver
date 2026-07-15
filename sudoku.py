@@ -1,7 +1,8 @@
 from collections.abc import Iterator
-from itertools import product, islice
-import numpy as np
+from itertools import islice, product
 from time import time
+
+import numpy as np
 
 
 class Table:
@@ -43,9 +44,8 @@ class Table:
             )
         )
 
-    def get_placeable_cells(self, number: int) -> list:
+    def get_placeable_cells(self, number: int | None) -> list:
         if number is None:
-            # return [False for _ in range(81)]
             return list(np.full(81, False))
         result = []
         for x, y in product(range(9), range(9)):
