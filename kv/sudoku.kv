@@ -11,8 +11,19 @@
 #:set border_size dp(3)
 #:set transition_len .25
 
+<RootLayout>:
+    Label:
+        text: "v" + app.app_version
+        size_hint: None, None
+        size: self.texture_size
+        font_size: font_s // 2
+        color: 0, 0, 0, 0.4
+        pos_hint: {"x": 0.012, "y": 0.01}
+
+
 <CameraScreen>
     name: "camera"
+    my_camera: camera
     BoxLayout:
         orientation: "horizontal" if root.width > root.height else "vertical"
         RelativeLayout:

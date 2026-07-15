@@ -10,7 +10,6 @@ from kivy.logger import Logger
 from kivy.properties import StringProperty
 from kivy.uix.behaviors.togglebutton import ToggleButtonBehavior
 from kivy.uix.floatlayout import FloatLayout
-from kivy.uix.label import Label
 from kivy.uix.screenmanager import ScreenManager
 
 from core.config import get_config
@@ -20,6 +19,12 @@ from widgets.confirm_popup import ConfirmPopup
 from widgets.dial import DialButton
 from widgets.operation_button import OperationButton
 from widgets.sudoku_grid import SudokuCell
+
+
+class RootLayout(FloatLayout):
+    """App shell: version chrome in KV; screens added from Python."""
+
+    pass
 
 
 class SudokuApp(App):
@@ -70,24 +75,14 @@ class SudokuApp(App):
         from screens.camera_screen import CameraScreen
         from screens.sudoku_screen import SudokuScreen
 
-        root = FloatLayout()
+        root = RootLayout()
         self.sm = ScreenManager()
         self.sm.add_widget(SudokuScreen())
         self.sm.add_widget(CameraScreen())
         self.sm.current = "sudoku"
-        root.add_widget(self.sm)
-
-        version_label = Label(
-            text=f"v{self.app_version}",
-            size_hint=(None, None),
-            font_size="12sp",
-            color=(0, 0, 0, 0.4),
-            pos_hint={"x": 0.012, "y": 0.01},
-        )
-        version_label.bind(texture_size=version_label.setter("size"))
-        root.add_widget(version_label)
+        # Insert under the KV version label so it stays on top.
+        root.add_widget(self.sm, index=len(root.children))
         return root
-
 
     def on_start(self):
         self.buttons = list(ToggleButtonBehavior.get_widgets("sudoku_cells"))
