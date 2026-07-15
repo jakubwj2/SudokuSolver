@@ -1,13 +1,23 @@
+from __future__ import annotations
+
 from typing import Sequence
 
 import cv2
 import numpy as np
 
-from app_config import get_config
-from recognizers import get_digit_recognizer
+from core.config import get_config
+from core.recognizers import get_digit_recognizer
+from core.recognizers.protocol import DigitRecognizer
 
-model = get_digit_recognizer()
-model.load(str(get_config().paths.model))
+_model: DigitRecognizer | None = None
+
+
+def _get_model() -> DigitRecognizer:
+    global _model
+    if _model is None:
+        _model = get_digit_recognizer()
+        _model.load(str(get_config().paths.model))
+    return _model
 
 
 def sudoku_pre_processing(img: np.ndarray) -> np.ndarray:
@@ -218,6 +228,7 @@ def read_sudoku(img: np.ndarray) -> np.ndarray | None:
 
     predictions = []
 
+    model = _get_model()
     for cell in cells:
         predictions.append(model.pred(np.array([cell])))
 

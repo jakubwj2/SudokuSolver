@@ -308,8 +308,8 @@ class Table:
     def compare_print(self) -> None:
         print("Original Sudoku" + "\t" * 3 + "Solved Sudoku")
         for original_array_row, array_row in zip(
-            t.__print_table_row(t.original_array, " "),
-            t.__print_table_row(t.sudoku_array, " "),
+            self.__print_table_row(self.original_array, " "),
+            self.__print_table_row(self.sudoku_array, " "),
         ):
             print(original_array_row, "\t", end="")
             print(array_row)

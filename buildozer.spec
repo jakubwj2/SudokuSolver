@@ -22,18 +22,18 @@ source.include_exts = py,png,jpg,kv,atlas,tflite,json
 #source.exclude_exts = spec
 
 # (list) List of directory to exclude (let empty to not exclude anything)
-source.exclude_dirs = bin, .venv, .vscode, .cursor, .buildozer, __pycache__, sudoku_photos, SudokuPhotos
+source.exclude_dirs = bin, .venv, .vscode, .cursor, .buildozer, __pycache__, sudoku_photos, SudokuPhotos, tools, typings
 
 # (list) List of exclusions using pattern matching
 # Do not prefix with './'
 #source.exclude_patterns = license,images/*/*.jpg
 
 # (str) Application versioning (method 1)
-version = 0.4
+#version = 0.4
 
-# (str) Application versioning (method 2)
-# version.regex = __version__ = ['"](.*)['"]
-# version.filename = %(source.dir)s/main.py
+# (str) Application versioning (method 2) — keep in sync with version.py
+version.regex = __version__ = ['"](.*)['"]
+version.filename = %(source.dir)s/version.py
 
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy

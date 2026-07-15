@@ -1,0 +1,39 @@
+from __future__ import annotations
+
+import os
+import time
+
+import cv2
+from kivy.uix.screenmanager import Screen
+
+from app.utils import get_app
+from core.vision import read_sudoku
+
+
+class CameraScreen(Screen):
+    """Camera preview and sudoku capture."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.my_camera = self.ids["camera"]
+
+    def on_enter(self, *args):
+        self.my_camera.start_capture()
+
+    def on_leave(self, *args):
+        self.my_camera.stop_capture()
+
+    def capture_sudoku(self):
+        if self.my_camera.img is None:
+            return
+
+        timestr = time.strftime("%Y-%m-%d_%H-%M-%S")
+        app = get_app()
+        img_path = os.path.join(app.img_folder, "%s.png" % timestr)
+        cv2.imwrite(img_path, cv2.cvtColor(self.my_camera.img, cv2.COLOR_RGBA2BGRA))
+        new_sudoku = read_sudoku(self.my_camera.img)
+        if new_sudoku is None:
+            os.rename(img_path, img_path[:-4] + "_None.png")
+            return
+
+        app.load_captured_sudoku(new_sudoku)

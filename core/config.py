@@ -5,8 +5,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlparse
 
-CONFIG_PATH = Path(__file__).resolve().parent / "config.json"
-_ROOT = CONFIG_PATH.parent
+# Project root (parent of core/)
+_ROOT = Path(__file__).resolve().parent.parent
+CONFIG_PATH = _ROOT / "config.json"
 _URL_SCHEMES = frozenset({"http", "https", "rtsp"})
 
 
@@ -68,12 +69,7 @@ def _parse_paths(data: dict) -> PathsConfig:
 
 
 def get_config() -> AppConfig:
-    """
-    Get the configuration for the app.
-
-    Returns:
-        AppConfig: The configuration for the app.
-    """
+    """Load and validate config.json from the project root."""
     if not CONFIG_PATH.is_file():
         raise FileNotFoundError(f"Missing config file: {CONFIG_PATH}")
 

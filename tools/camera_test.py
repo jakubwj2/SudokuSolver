@@ -10,7 +10,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.image import Image
 from kivy.uix.label import Label
 
-from app_config import get_config
+from core.config import get_config
 
 
 class UrlCameraView(BoxLayout):
