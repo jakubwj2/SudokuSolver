@@ -129,26 +129,25 @@
     anchor_x: "center"
     canvas:
         Color:
-            rgba: (0,0,0,0) if root.state == "normal" else (0, 0, 0.5, 0.5)
+            rgba: root.background_color
         Rectangle:
             pos:self.pos
             size:self.size
     canvas.before:
         Color:
-            rgba: bg_secondary_color if root.is_highlighted else bg_tetriary_color
+            rgba: bg_secondary_color if root.status == "highlight" else bg_tetriary_color
         Rectangle:
             pos: self.pos
             size: self.size
     Label:
         text: str(root.number if root.number != 0 else "")
-        color: (0,0,0,1) if root.is_locked else secondary_color
+        color: (0,0,0,1) if root.status == "locked" else secondary_color
         font_size: font_s
 
     Label:
         text: root.candidate_list
         font_size:sp(11)
         color: "black"
-
 
 
 <DialButton>
