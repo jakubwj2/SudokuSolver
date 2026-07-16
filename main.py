@@ -11,10 +11,8 @@ import screens  # noqa: F401
 import widgets  # noqa: F401
 from app.sudoku_app import SudokuApp
 
-Builder.load_file(str(Path(__file__).resolve().parent / "kv" / "main.kv"))
-
-
 if __name__ == "__main__":
+    Builder.load_file(str(Path(__file__).resolve().parent / "kv" / "main.kv"))
     # Poco 6 window size -> (2712, 1220)
     if platform in ("win", "linux"):
         Window.size = (2712 / 3, 1220 / 3)

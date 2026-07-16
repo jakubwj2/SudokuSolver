@@ -4,6 +4,8 @@ from time import time
 
 import numpy as np
 
+CELL_COORDS = tuple(product(range(9), range(9)))
+
 
 class Table:
     """Sudoku table class."""
@@ -24,18 +26,18 @@ class Table:
         self.gen_candidates()
         self.solutions = list()
 
-    def is_empty(self, row_idx: int, column_idx: int) -> np.bool:
+    def is_empty(self, x: int, y: int) -> np.bool:
         """Check if the cell is empty.
         Args:
-            row_idx (int): The row index.
-            column_idx (int): The column index.
+            x (int): The row index.
+            y (int): The column index.
         Returns:
             np.bool: True if the cell is empty, False otherwise.
         """
-        return self.sudoku_array[row_idx, column_idx] == 0
+        return self.sudoku_array[x, y] == 0
 
     def get_section_by_idx(self, array: np.ndarray, idx: int) -> np.ndarray:
-        """Get the section by index.
+        """Get the section by index. Useful for iterating over sections.
         Args:
             array (np.ndarray): The array to get the section from.
             idx (int): The flattened section index.
@@ -48,102 +50,94 @@ class Table:
         """Get the section by x and y.
         Args:
             array (np.ndarray): The array to get the section from.
-            x (int): The x index of the section.
-            y (int): The y index of the section.
+            x (int): The row index of the section.
+            y (int): The column index of the section.
         Returns:
             np.ndarray: The section.
         """
         return array[x * 3 : (x + 1) * 3, y * 3 : (y + 1) * 3]
 
-    def is_valid_row_for_number(
-        self, number: int, row_idx: int, column_idx: int
-    ) -> np.bool:
+    def is_valid_cell_for_number(self, number: int, x: int, y: int) -> np.bool:
         """Check if the cell with the given row and column index is valid for the number.
         Args:
             number (int): The number to check.
-            row_idx (int): The row index of the cell.
-            column_idx (int): The column index of the cell.
+            x (int): The row index of the cell.
+            y (int): The column index of the cell.
         Returns:
             np.bool: True if the cell is valid for the number, False otherwise.
         """
-        return np.all(self.sudoku_array[row_idx, :column_idx] != number) and np.all(
-            self.sudoku_array[row_idx, column_idx + 1 :] != number
-        )
 
-    def is_valid_column_for_number(
-        self, number: int, row_idx: int, column_idx: int
-    ) -> np.bool:
-        """Check if the cell with the given row and column index is valid for the number.
+        # array = self.sudoku_array
+        # is_row_valid = np.all(array[x, :y] != number) and np.all(
+        #     array[x, y + 1 :] != number
+        # )
+
+        # is_column_valid = np.all(array[:x, y] != number) and np.all(
+        #     array[x + 1 :, y] != number
+        # )
+
+        # section_array = self.get_section(array, x // 3, y // 3).flatten()
+
+        # idx = x % 3 * 3 + y % 3
+        # is_section_valid = np.all(section_array[:idx] != number) and np.all(
+        #     section_array[idx + 1 :] != number
+        # )
+
+        # return is_row_valid and is_column_valid and is_section_valid
+        return np.bool(number in self.get_valid_numbers_for_cell(x, y))
+
+    def get_valid_numbers_for_cell(self, x: int, y: int) -> list[int]:
+        """Get the valid numbers for the cell with the given row and column index.
         Args:
-            number (int): The number to check.
-            row_idx (int): The row index of the cell.
-            column_idx (int): The column index of the cell.
+            x (int): The row index of the cell.
+            y (int): The column index of the cell.
         Returns:
-            np.bool: True if the cell is valid for the number, False otherwise.
+            list: The valid numbers for the cell.
         """
-        return np.all(self.sudoku_array[:row_idx, column_idx] != number) and np.all(
-            self.sudoku_array[row_idx + 1 :, column_idx] != number
+
+        row = set(cell for idx, cell in enumerate(self.sudoku_array[x]) if idx != y)
+
+        column = set(
+            cell for idx, cell in enumerate(self.sudoku_array[:, y]) if idx != x
         )
 
-    def is_valid_section_for_number(
-        self, number: int, row_idx: int, column_idx: int
-    ) -> np.bool:
-        """Check if the cell with the given row and column index is valid for the number.
-        Args:
-            number (int): The number to check.
-            row_idx (int): The row index of the cell.
-            column_idx (int): The column index of the cell.
-        Returns:
-            np.bool: True if the cell is valid for the number, False otherwise.
-        """
-        section = self.get_section(self.sudoku_array, row_idx // 3, column_idx // 3)
-        section_array = section.flatten()
+        section_array = self.get_section(self.sudoku_array, x // 3, y // 3).flatten()
+        cell_idx = x % 3 * 3 + y % 3
+        section = set(cell for idx, cell in enumerate(section_array) if idx != cell_idx)
 
-        idx = row_idx % 3 * 3 + column_idx % 3
-        return np.all(section_array[:idx] != number) and np.all(
-            section_array[idx + 1 :] != number
-        )
+        return list(set(range(1, 10)) - row - column - section)
 
-    def get_valid_cells_for_number(self, number: int | None) -> list:
+    def get_valid_cells_for_number(self, number: int | None) -> list[bool]:
         """Get the valid cells for a number.
         Args:
             number (int | None): The number to get the valid cells for.
         Returns:
-            list: The valid cells for the number.
+            list[bool]: A list of booleans indicating if the cell is valid for the number.
         """
         if number is None:
             return list(np.full(81, False))
         result = []
-        for x, y in product(range(9), range(9)):
+        for x, y in CELL_COORDS:
             result.append(self.candidates_contain(number, x, y))
         return result
 
-    def is_valid_cell_for_number(
-        self, number: int, row_idx: int, column_idx: int
-    ) -> np.bool:
-        """Check if the cell with the given row and column index is valid for the number.
-        Args:
-            number (int): The number to check.
-            row_idx (int): The row index of the cell.
-            column_idx (int): The column index of the cell.
+    def get_errors(self) -> list[bool]:
+        """Get any errors in the table.
         Returns:
-            np.bool: True if the cell is valid for the number, False otherwise.
+            list[bool]: A list of booleans indicating if the cell is valid.
         """
-        return (
-            self.is_valid_row_for_number(number, row_idx, column_idx)
-            and self.is_valid_column_for_number(number, row_idx, column_idx)
-            and self.is_valid_section_for_number(number, row_idx, column_idx)
-        )
+        return [
+            not self.is_empty(x, y)
+            and not self.is_valid_cell_for_number(self.sudoku_array[x, y], x, y)
+            for x, y in CELL_COORDS
+        ]
 
     def gen_candidates(self) -> None:
         """Generate the candidates for all cells in the table."""
-        self.candidates.fill(None)
-        for number, x, y in product(range(1, 10), range(9), range(9)):
-            if self.is_empty(x, y) and self.is_valid_cell_for_number(number, x, y):
-                if self.candidates[x, y] is None:
-                    self.candidates[x, y] = [number]
-                else:
-                    self.candidates[x, y].append(number)
+        for x, y in CELL_COORDS:
+            self.candidates[x, y] = (
+                self.get_valid_numbers_for_cell(x, y) if self.is_empty(x, y) else None
+            )
 
     # def filter_candidates(self):
     #     for number in range(1, 10):
@@ -151,7 +145,7 @@ class Table:
     #         in_row = np.zeros((9, 3))
     #         in_column = np.zeros((9, 3))
 
-    #         for x, y in product(range(9), range(9)):
+    #         for x, y in CELL_COORDS:
     #             number_in_candidates[x, y] = self.candidates_contain(number, x, y)
 
     #         for idx in range(9):
@@ -234,7 +228,7 @@ class Table:
     #     column_sums = np.zeros((9, 9))
     #     section_sums = np.zeros((3, 3, 9))
 
-    #     for number, idx in product(range(9), range(9)):
+    #     for number, idx in CELL_COORDS:
     #         row_sums[idx, number] = self.single_candidate_in_list(
     #             number + 1, self.candidates[idx]
     #         )
@@ -248,7 +242,7 @@ class Table:
     #             number + 1, sub_section
     #         )
 
-    #     for x, y in product(range(9), range(9)):
+    #     for x, y in CELL_COORDS:
     #         if self.candidates[x, y] is None:
     #             continue
 
@@ -278,6 +272,17 @@ class Table:
             number, self.get_section(self.candidates, x // 3, y // 3)
         )
 
+    def remove_number(self, x: int, y: int) -> None:
+        """Remove a number from the cell with the given row and column index. Add the number to the candidates of the row, column and section.
+        Args:
+            x (int): The row index of the cell.
+            y (int): The column index of the cell.
+        """
+        self.sudoku_array[x, y] = 0
+        # TODO: Optimize this by only generating the candidates
+        # for the cells that are affected by the removal of the number
+        self.gen_candidates()
+
     def solve(self, single_solution: bool = True) -> None:
         """Solve the Sudoku puzzle using backpropagation.
         Args:
@@ -306,7 +311,7 @@ class Table:
 
     def _backpropagation_single_solutonion(self, start_idx) -> bool:
         """Solve the Sudoku puzzle using backpropagation for a single solution."""
-        for x, y in islice(product(range(9), range(9)), start_idx, 81):
+        for x, y in islice(CELL_COORDS, start_idx, 81):
             if not self.is_empty(x, y):
                 continue
 
@@ -322,7 +327,7 @@ class Table:
 
     def _backpropagation_all_solutions(self, start_idx):
         """Solve the Sudoku puzzle using backpropagation for all solutions."""
-        for x, y in islice(product(range(9), range(9)), start_idx, 81):
+        for x, y in islice(CELL_COORDS, start_idx, 81):
             if not self.is_empty(x, y):
                 continue
 
@@ -334,27 +339,6 @@ class Table:
 
         self.solutions.append(self.sudoku_array.copy())
         print(len(self.solutions), end="\r")
-
-    def get_valid_numbers_for_cell(self, x: int, y: int) -> list:
-        """Get the valid numbers for the cell with the given row and column index.
-        Args:
-            x (int): The row index of the cell.
-            y (int): The column index of the cell.
-        Returns:
-            list: The valid numbers for the cell.
-        """
-
-        row = set(cell for idx, cell in enumerate(self.sudoku_array[x]) if idx != y)
-
-        column = set(
-            cell for idx, cell in enumerate(self.sudoku_array[:, y]) if idx != x
-        )
-
-        section_array = self.get_section(self.sudoku_array, x // 3, y // 3).flatten()
-        cell_idx = x % 3 * 3 + y % 3
-        section = set(cell for idx, cell in enumerate(section_array) if idx != cell_idx)
-
-        return list(set(range(1, 10)) - row - column - section)
 
     def test_all_solutions(self):
         for solution_idx in range(len(self.solutions)):

@@ -4,7 +4,6 @@ import os
 
 import numpy as np
 from kivy import platform
-from kivy.animation import Animation
 from kivy.app import App
 from kivy.logger import Logger
 from kivy.properties import StringProperty
@@ -18,7 +17,7 @@ from version import __version__
 from widgets.confirm_popup import ConfirmPopup
 from widgets.dial import DialButton
 from widgets.operation_button import OperationButton
-from widgets.sudoku_grid import SudokuCell
+from widgets.sudoku_widget import SudokuCell
 
 
 class RootLayout(FloatLayout):
@@ -86,8 +85,7 @@ class SudokuApp(App):
             Logger.warning("SudokuApp: no sudoku cells found at start")
             return
         self.repopulate_sudoku()
-        self.highlight_valid_cells_for_number(None)
-        self.populate_candidates(self.hide_candidates)
+        self.highlight_cells_and_populate_candidates()
 
     def on_stop(self):
         if hasattr(self, "buttons"):
@@ -101,29 +99,18 @@ class SudokuApp(App):
         self.table = Table(new_sudoku)
         self.table.original_array = np.zeros((9, 9), dtype=np.int8)
         self.repopulate_sudoku()
-        self.highlight_valid_cells_for_number(None)
-        self.populate_candidates(self.hide_candidates)
+        self.highlight_cells_and_populate_candidates()
         if self.sm is not None:
             self.sm.current = "sudoku"
 
     def repopulate_sudoku(self):
-        for button, number, original in zip(
+        for cell, number, original in zip(
             self.sudoku_cells,
             self.table.sudoku_array.flatten(),
             self.table.original_array.flatten(),
         ):
-            button.number = int(number)
-            button.status = "locked" if original != 0 else "normal"
-        self.populate_candidates(self.hide_candidates)
-
-    def highlight_valid_cells_for_number(self, number: int | None):
-        for button, placeable in zip(
-            self.sudoku_cells, self.table.get_valid_cells_for_number(number)
-        ):
-            if button.status == "locked":
-                continue
-
-            button.status = "highlight" if placeable else "normal"
+            cell.number = int(number)
+            cell.locked = original != 0
         self.populate_candidates(self.hide_candidates)
 
     def on_solve(self, instance: OperationButton):
@@ -134,7 +121,7 @@ class SudokuApp(App):
             self.table.reset()
             instance.text = "Solve"
         self.repopulate_sudoku()
-        self.highlight_valid_cells_for_number(None)
+        self.highlight_cells_and_populate_candidates()
         self.deselect_cell()
         self.deselect_number()
 
@@ -161,7 +148,9 @@ class SudokuApp(App):
         def clear_all(_instance: OperationButton):
             self.table = Table()
             self.repopulate_sudoku()
-            self.highlight_valid_cells_for_number(None)
+            self.deselect_cell()
+            self.deselect_number()
+            self.highlight_cells_and_populate_candidates()
 
         popup = ConfirmPopup(
             on_ok=clear_all,
@@ -170,18 +159,6 @@ class SudokuApp(App):
         )
         popup.open()
 
-    def on_validate(self, instance: OperationButton):
-        anim = Animation(
-            background_color=(
-                (0, 1, 0, 1)
-                if self.table.validate(self.table.sudoku_array)
-                else (1, 0, 0, 1)
-            ),
-            duration=0.25,
-        )
-        anim += Animation(background_color=instance.background_color, duration=0.25)
-        anim.start(instance)
-
     def on_select_number(self, instance: DialButton):
         if instance.state == "normal":
             self.selected_number = None
@@ -189,20 +166,26 @@ class SudokuApp(App):
         else:
             self.selected_number = instance
             self.highlight_valid_cells_for_number(self.selected_number.number)
-            if self.place_number():
+
+            cell_dial = self.try_get_cell_and_dial()
+            if cell_dial:
+                self.place_number(*cell_dial)
                 self.deselect_number()
 
     def on_select_cell(self, instance: SudokuCell):
-        if instance.status == "locked":
-            instance.status = "normal"
+        if instance.locked:
+            instance.state = "normal"
             self.deselect_cell()
             return
-        if instance.status == "normal":
+        if instance.state == "normal":
             self.selected_cell = None
             return
 
         self.selected_cell = instance
-        if self.place_number():
+
+        cell_dial = self.try_get_cell_and_dial()
+        if cell_dial:
+            self.place_number(*cell_dial)
             self.deselect_cell()
 
     def on_show_candidates(self, instance: OperationButton):
@@ -210,41 +193,53 @@ class SudokuApp(App):
         self.populate_candidates(self.hide_candidates)
 
     def populate_candidates(self, hide: bool):
-        for button, candidates in zip(
-            self.sudoku_cells, self.table.candidates.flatten()
-        ):
-            button.set_candidates(candidates, hide)
+        for cell, candidates in zip(self.sudoku_cells, self.table.candidates.flatten()):
+            cell.set_candidates(candidates, hide)
 
-    def place_number(self) -> bool:
+    def place_number(self, cell: SudokuCell, dial: DialButton) -> None:
+
+        x, y = cell.idx
+        if self.table.sudoku_array[x, y] == dial.number:
+            # self.on_clear(self.selected_cell)
+            self.table.remove_number(x, y)
+            cell.number = 0
+            self.highlight_cells_and_populate_candidates()
+            return
+
+        self.table.insert_number(dial.number, x, y)
+        cell.number = dial.number
+
+        self.highlight_cells_and_populate_candidates()
+
+    def try_get_cell_and_dial(self) -> tuple[SudokuCell, DialButton] | None:
         if self.selected_number is None or self.selected_cell is None:
-            return False
-        x, y = self.selected_cell.idx
-        if self.table.sudoku_array[x, y] == self.selected_number.number:
-            self.on_clear(self.selected_cell)
-            self.highlight_valid_cells_for_number(self.selected_number.number)
-            return True
+            return None
+        return self.selected_cell, self.selected_number
 
-        elif not (
-            self.table.is_empty(x, y)
-            and self.table.is_valid_cell_for_number(self.selected_number.number, x, y)
+    def highlight_cells_and_populate_candidates(self):
+
+        number = self.selected_number.number if self.selected_number else None
+        if not number and self.selected_cell:
+            number = self.selected_cell.number
+
+        if number:
+            self.highlight_valid_cells_for_number(number)
+        self.highlight_errors()
+        self.populate_candidates(self.hide_candidates)
+
+    def highlight_valid_cells_for_number(self, number: int | None):
+        for cell, placeable in zip(
+            self.sudoku_cells, self.table.get_valid_cells_for_number(number)
         ):
-            button = self.sudoku_cells[x * 9 + y]
-            anim = Animation(state="error", duration=0.2)
-            anim += Animation(state="normal", duration=0.2)
-            anim.start(button)
-            self.deselect_cell()
-            return False
+            cell.highlight = placeable
 
-        else:
-            self.table.insert_number(self.selected_number.number, x, y)
-
-        self.selected_cell.number = self.selected_number.number
-        self.highlight_valid_cells_for_number(self.selected_number.number)
-        return True
+    def highlight_errors(self):
+        for cell, is_error in zip(self.sudoku_cells, self.table.get_errors()):
+            cell.error = is_error
 
     def deselect_cell(self):
         if self.selected_cell is not None:
-            self.selected_cell.status = "normal"
+            self.selected_cell.state = "normal"
             self.selected_cell = None
 
     def deselect_number(self):
