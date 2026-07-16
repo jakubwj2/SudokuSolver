@@ -11,7 +11,7 @@ import screens  # noqa: F401
 import widgets  # noqa: F401
 from app.sudoku_app import SudokuApp
 
-Builder.load_file(str(Path(__file__).resolve().parent / "kv" / "sudoku.kv"))
+Builder.load_file(str(Path(__file__).resolve().parent / "kv" / "main.kv"))
 
 
 if __name__ == "__main__":
