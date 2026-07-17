@@ -11,6 +11,13 @@ from core.recognizers.protocol import DigitRecognizer
 
 _model: DigitRecognizer | None = None
 
+# Contour detection runs on a downscaled copy; corners are mapped back to full-res.
+_DETECT_MAX_WIDTH = 480
+# Minimum contour area at "full" scale (~252x252). Scaled down with the detect image.
+_MIN_CONTOUR_AREA = 63_504
+# Blur / adaptive-threshold sizes were tuned for full-HD camera frames; scale with width.
+_PREPROCESS_REF_WIDTH = 1920
+
 
 def _get_model() -> DigitRecognizer:
     global _model
@@ -20,9 +27,36 @@ def _get_model() -> DigitRecognizer:
     return _model
 
 
+def _odd_kernel(size: float, *, minimum: int = 3) -> int:
+    """Round to an odd kernel size >= ``minimum`` (OpenCV requirement)."""
+    size = max(minimum, int(round(size)))
+    if size % 2 == 0:
+        size += 1
+    return size
+
+
+def _prepare_detection_image(img: np.ndarray) -> tuple[np.ndarray, float]:
+    """Return a detection-sized image and the factor to map coords back to ``img``."""
+    height, width = img.shape[:2]
+    if width <= _DETECT_MAX_WIDTH:
+        return img, 1.0
+
+    scale = width / _DETECT_MAX_WIDTH
+    small = cv2.resize(
+        img,
+        (_DETECT_MAX_WIDTH, int(round(height / scale))),
+        interpolation=cv2.INTER_AREA,
+    )
+    return small, scale
+
+
 def sudoku_pre_processing(img: np.ndarray) -> np.ndarray:
     """
-    Preprocess the image to make Computer Vision more accurate and consistent.
+    Preprocess an RGBA frame for contour detection.
+
+    Blur and adaptive-threshold block size scale with image width so downscaled
+    detection stays comparable to the original 1920-wide tuning. Callers (e.g.
+    ``KivyCamera``) are expected to convert to RGBA before this runs.
 
     Args:
         img (np.ndarray): The sudoku image to preprocess.
@@ -30,10 +64,20 @@ def sudoku_pre_processing(img: np.ndarray) -> np.ndarray:
     Returns:
         np.ndarray: The preprocessed sudoku image.
     """
+    width = img.shape[1]
+    scale = width / _PREPROCESS_REF_WIDTH
+    blur_k = _odd_kernel(5 * scale)
+    block_size = _odd_kernel(11 * scale)
+
     img_gray = cv2.cvtColor(img, cv2.COLOR_RGBA2GRAY)
-    img_blur = cv2.GaussianBlur(img_gray, (5, 5), 1)
+    img_blur = cv2.GaussianBlur(img_gray, (blur_k, blur_k), 0)
     img_thresh = cv2.adaptiveThreshold(
-        img_blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2
+        img_blur,
+        255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY_INV,
+        block_size,
+        2,
     )
     return img_thresh
 
@@ -54,19 +98,24 @@ def cell_pre_processing(img: np.ndarray) -> np.ndarray:
     # img = cv2.equalizeHist(img)
     img = img.reshape(img.shape[0], img.shape[1], 1)
     img = img / 255
-    img = 1 - img
+    img = 1.0 - img
     return img
 
 
-def largest_contour_area(contours: Sequence[np.ndarray]) -> np.ndarray | None:
+def largest_contour_area(
+    contours: Sequence[np.ndarray],
+    *,
+    min_area: float = _MIN_CONTOUR_AREA,
+) -> np.ndarray | None:
     """
     Find the largest contour from a list of contours.
 
     Args:
-        contours (Sequence[np.ndarray]): A list of contours to find the largest from.
+        contours (Sequence[np.ndarray]): Contours to search.
+        min_area (float): Minimum contour area in the same coordinate space as ``contours``.
 
     Returns:
-        tuple[np.ndarray | None, float]: The largest contour and its area.
+        np.ndarray | None: The largest qualifying 4-point contour, or ``None``.
     """
 
     largest_contour: np.ndarray | None = None
@@ -75,7 +124,7 @@ def largest_contour_area(contours: Sequence[np.ndarray]) -> np.ndarray | None:
         area = cv2.contourArea(contour)
         # We intend to increase the area by warping to a minimum of 63_504 (28^2*9^2) pixels
         # We are currently expanding the area to over 200_000 (for preprocessing purposes)
-        if area < 63_504 or area < max_area:
+        if area < min_area or area < max_area:
             continue
 
         perimeter = cv2.arcLength(contour, True)
@@ -95,6 +144,31 @@ def largest_contour_area(contours: Sequence[np.ndarray]) -> np.ndarray | None:
         largest_contour = simplified_contour
         max_area = area
 
+    return largest_contour
+
+
+def find_sudoku_contour(img: np.ndarray) -> np.ndarray | None:
+    """
+    Find the largest sudoku-like quad in ``img``.
+
+    Detection runs on a downscaled copy for speed; the returned contour is in
+    full-resolution image coordinates.
+    """
+    small, scale = _prepare_detection_image(img)
+    thresh = sudoku_pre_processing(small)
+    contours, _hierarchy = cv2.findContours(
+        thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+    )
+
+    min_area = _MIN_CONTOUR_AREA / (scale**2)
+    largest_contour = largest_contour_area(contours, min_area=min_area)
+    if largest_contour is None:
+        return None
+
+    if scale != 1.0:
+        largest_contour = np.round(largest_contour.astype(np.float64) * scale).astype(
+            np.int32
+        )
     return largest_contour
 
 
@@ -176,12 +250,7 @@ def try_draw_sudoku_highlight(img: np.ndarray) -> tuple[bool, np.ndarray]:
     Returns:
         tuple[bool, np.ndarray]: A tuple containing a boolean indicating success and the image with the highlight.
     """
-    thresh = sudoku_pre_processing(img)
-    contours, hierarchy = cv2.findContours(
-        thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-    )
-
-    largest_contour = largest_contour_area(contours)
+    largest_contour = find_sudoku_contour(img)
     if largest_contour is None:
         return False, img
 
@@ -199,12 +268,7 @@ def read_sudoku(img: np.ndarray) -> np.ndarray | None:
     Returns:
         np.ndarray | None: The sudoku array or None if no sudoku is found.
     """
-    thresh = sudoku_pre_processing(img)
-    contours, hierarchy = cv2.findContours(
-        thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-    )
-
-    largest_contour = largest_contour_area(contours)
+    largest_contour = find_sudoku_contour(img)
 
     if largest_contour is None:
         print("No sudoku found!")
@@ -221,7 +285,7 @@ def read_sudoku(img: np.ndarray) -> np.ndarray | None:
     )
     matrix = cv2.getPerspectiveTransform(pts1, pts2)
     imgWarpColored = cv2.warpPerspective(img, matrix, (width, height))
-    imgWarpGray = cv2.cvtColor(imgWarpColored, cv2.COLOR_BGR2GRAY)
+    imgWarpGray = cv2.cvtColor(imgWarpColored, cv2.COLOR_RGBA2GRAY)
 
     boxes = split_boxes(imgWarpGray)
     cells = np.array(list(map(cell_pre_processing, boxes)))
@@ -240,7 +304,12 @@ def read_sudoku(img: np.ndarray) -> np.ndarray | None:
 
 
 if __name__ == "__main__":
+    import time
+
+    start_time = time.time()
     IMG_PATH = "SudokuPhotos/2026-07-14_17-21-01.png"
     img = np.array(cv2.imread(IMG_PATH))
     array = read_sudoku(img)
     print(array)
+    end_time = time.time()
+    print(f"Time taken: {end_time - start_time} seconds")
