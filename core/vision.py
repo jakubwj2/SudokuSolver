@@ -18,6 +18,14 @@ _MIN_CONTOUR_AREA = 63_504
 # Blur / adaptive-threshold sizes were tuned for full-HD camera frames; scale with width.
 _PREPROCESS_REF_WIDTH = 1920
 
+# Geometric priors for quad candidates (relative to the detection-frame size).
+_MIN_AREA_FRAME_FRAC = 0.15
+_MAX_AREA_FRAME_FRAC = 0.85
+_MIN_ASPECT = 0.85
+_MAX_ASPECT = 1.15
+_MIN_BORDER_MARGIN_PX = 2
+_BORDER_MARGIN_FRAC = 0.02
+
 
 def _get_model() -> DigitRecognizer:
     global _model
@@ -102,49 +110,74 @@ def cell_pre_processing(img: np.ndarray) -> np.ndarray:
     return img
 
 
+def _border_hug_count(
+    quad: np.ndarray,
+    frame_width: int,
+    frame_height: int,
+    margin: int,
+) -> int:
+    """How many corners lie within ``margin`` px of the frame edge."""
+    count = 0
+    for x, y in quad.reshape(-1, 2):
+        if (
+            x <= margin
+            or y <= margin
+            or x >= frame_width - 1 - margin
+            or y >= frame_height - 1 - margin
+        ):
+            count += 1
+    return count
+
+
 def largest_contour_area(
     contours: Sequence[np.ndarray],
     *,
+    frame_shape: tuple[int, int],
     min_area: float = _MIN_CONTOUR_AREA,
 ) -> np.ndarray | None:
     """
-    Find the largest contour from a list of contours.
+    Pick the best sudoku-like 4-point contour.
 
-    Args:
-        contours (Sequence[np.ndarray]): Contours to search.
-        min_area (float): Minimum contour area in the same coordinate space as ``contours``.
-
-    Returns:
-        np.ndarray | None: The largest qualifying 4-point contour, or ``None``.
+    Applies geometric priors (area fraction, near-square aspect, convexity),
+    prefers quads whose corners are inset from the frame border, then largest area.
     """
+    frame_height, frame_width = frame_shape[:2]
+    frame_area = float(frame_width * frame_height)
+    area_lo = max(min_area, _MIN_AREA_FRAME_FRAC * frame_area)
+    area_hi = _MAX_AREA_FRAME_FRAC * frame_area
+    margin = max(
+        _MIN_BORDER_MARGIN_PX,
+        int(round(_BORDER_MARGIN_FRAC * min(frame_width, frame_height))),
+    )
 
-    largest_contour: np.ndarray | None = None
-    max_area: float = 0
+    # (border_hug_count, -area, quad) — lower hug first, then larger area
+    best_key: tuple[int, float] | None = None
+    best_quad: np.ndarray | None = None
+
     for contour in contours:
         area = cv2.contourArea(contour)
-        # We intend to increase the area by warping to a minimum of 63_504 (28^2*9^2) pixels
-        # We are currently expanding the area to over 200_000 (for preprocessing purposes)
-        if area < min_area or area < max_area:
+        if area < area_lo or area > area_hi:
             continue
 
         perimeter = cv2.arcLength(contour, True)
-        simplified_contour = cv2.approxPolyDP(contour, 0.02 * perimeter, True)
-        if len(simplified_contour) != 4:
+        quad = cv2.approxPolyDP(contour, 0.02 * perimeter, True)
+        if len(quad) != 4 or not cv2.isContourConvex(quad):
             continue
 
-        x, y, w, h = cv2.boundingRect(simplified_contour)
-        aspect_ratio = float(w) / h
-        if aspect_ratio < 0.9:
+        _center, (rect_w, rect_h), _angle = cv2.minAreaRect(quad)
+        if rect_w < 1.0 or rect_h < 1.0:
+            continue
+        aspect = rect_w / rect_h
+        if aspect < _MIN_ASPECT or aspect > _MAX_ASPECT:
             continue
 
-        bb_filled = area > (np.sqrt(w * w + h * h) / 2) ** 2
-        if not bb_filled:
-            continue
+        hug = _border_hug_count(quad, frame_width, frame_height, margin)
+        key = (hug, -area)
+        if best_key is None or key < best_key:
+            best_key = key
+            best_quad = quad
 
-        largest_contour = simplified_contour
-        max_area = area
-
-    return largest_contour
+    return best_quad
 
 
 def find_sudoku_quad(img: np.ndarray) -> np.ndarray | None:
@@ -161,7 +194,11 @@ def find_sudoku_quad(img: np.ndarray) -> np.ndarray | None:
     )
 
     min_area = _MIN_CONTOUR_AREA / (scale**2)
-    largest_contour = largest_contour_area(contours, min_area=min_area)
+    largest_contour = largest_contour_area(
+        contours,
+        frame_shape=small.shape[:2],
+        min_area=min_area,
+    )
     if largest_contour is None:
         return None
 
