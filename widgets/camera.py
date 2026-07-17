@@ -12,7 +12,7 @@ from kivy.properties import BooleanProperty, ObjectProperty
 from kivy.uix.image import Image
 
 from app.utils import get_app
-from core.vision import draw_contours, find_sudoku_contour
+from core.vision import draw_contours, find_sudoku_quad
 
 # Contour detection rate; preview still updates every frame using the last contour.
 _DETECT_INTERVAL_S = 1 / 10
@@ -30,6 +30,18 @@ class KivyCamera(Image):
 
     - Android: native device camera (Kivy CoreCamera)
     - Linux/desktop: IP webcam URL via OpenCV VideoCapture
+
+    Attributes:
+        img (np.ndarray): The last captured image.
+        index (ObjectProperty): The index of the camera to use.
+        play (BooleanProperty): Whether the camera is playing.
+        resolution (ObjectProperty): The resolution of the camera to use.
+        _camera (CoreCamera): The native device camera.
+        _cap (cv2.VideoCapture): The IP webcam capture.
+        _clock_ev (Clock): The clock event.
+        _last_contour (np.ndarray): The last detected contour.
+        _next_detect_at (float): The next detect at time.
+        _preview_texture (Texture): The preview texture.
     """
 
     play = BooleanProperty(False)
@@ -54,6 +66,7 @@ class KivyCamera(Image):
         self.play = False
 
     def start_capture(self):
+        """Starts the camera capture. Selects the appropriate camera based on the platform."""
         self.stop_capture()
         if platform == "android":
             self._start_device_camera()
@@ -61,6 +74,7 @@ class KivyCamera(Image):
             self._start_ip_webcam()
 
     def stop_capture(self):
+        """Stops the camera and releases the resources (contours, texture, captures, clocks etc.)."""
         self.play = False
         self._last_contour = None
         self._next_detect_at = 0.0
@@ -143,7 +157,7 @@ class KivyCamera(Image):
         now = perf_counter()
         if now >= self._next_detect_at:
             self._next_detect_at = now + _DETECT_INTERVAL_S
-            self._last_contour = find_sudoku_contour(frame_rgba)
+            self._last_contour = find_sudoku_quad(frame_rgba)
             if self._last_contour is not None:
                 self.img = frame_rgba
 

@@ -147,12 +147,12 @@ def largest_contour_area(
     return largest_contour
 
 
-def find_sudoku_contour(img: np.ndarray) -> np.ndarray | None:
+def find_sudoku_quad(img: np.ndarray) -> np.ndarray | None:
     """
-    Find the largest sudoku-like quad in ``img``.
+    Find the best sudoku-like quad in ``img``.
 
-    Detection runs on a downscaled copy for speed; the returned contour is in
-    full-resolution image coordinates.
+    Pipeline: downscale → preprocess → contours → candidate filter → best pick.
+    Returns a 4-point contour in full-resolution image coordinates, or ``None``.
     """
     small, scale = _prepare_detection_image(img)
     thresh = sudoku_pre_processing(small)
@@ -174,13 +174,10 @@ def find_sudoku_contour(img: np.ndarray) -> np.ndarray | None:
 
 def reorder_points(points: np.ndarray) -> np.ndarray:
     """
-    # Order the points of a countour by their widht and then by their height.
+    Order quad corners for perspective warp.
 
-    Args:
-        points (np.ndarray): The points to reorder.
-
-    Returns:
-        np.ndarray: The reordered points in the order of top-left, top-right, bottom-right, bottom-left.
+    Returns points in the order top-left, top-right, bottom-left, bottom-right
+    (matching ``pts2`` used with ``cv2.getPerspectiveTransform``).
     """
     points = points.reshape((4, 2))
     new_points = np.zeros((4, 1, 2), dtype=np.int32)
@@ -250,7 +247,7 @@ def try_draw_sudoku_highlight(img: np.ndarray) -> tuple[bool, np.ndarray]:
     Returns:
         tuple[bool, np.ndarray]: A tuple containing a boolean indicating success and the image with the highlight.
     """
-    largest_contour = find_sudoku_contour(img)
+    largest_contour = find_sudoku_quad(img)
     if largest_contour is None:
         return False, img
 
@@ -268,7 +265,7 @@ def read_sudoku(img: np.ndarray) -> np.ndarray | None:
     Returns:
         np.ndarray | None: The sudoku array or None if no sudoku is found.
     """
-    largest_contour = find_sudoku_contour(img)
+    largest_contour = find_sudoku_quad(img)
 
     if largest_contour is None:
         print("No sudoku found!")

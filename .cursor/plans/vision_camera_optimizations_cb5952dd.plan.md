@@ -3,11 +3,11 @@ name: Vision camera optimizations
 overview: Improve live sudoku detection performance and accuracy by sharing a single quad finder, running detection on a downscaled/throttled path with outline-only overlay, then scoring and temporally locking grid-like candidates for capture.
 todos:
   - id: phase1-perf
-    content: "Downscale (done) + throttle (done) + fill toggle (done) + texture reuse (done); avoid full-frame CV copy"
-    status: pending
+    content: "Phase 1 complete (downscale, throttle, fill toggle, texture reuse, conditional copy)"
+    status: completed
   - id: phase2-quad
-    content: Extract find_sudoku_quad with geometry priors, morphology, multi-candidate grid scoring; share with read_sudoku
-    status: pending
+    content: "find_sudoku_quad shared API (step 1 done); geometry priors; multi-candidate grid scoring; morphology; wire read_sudoku"
+    status: in_progress
   - id: phase3-lock
     content: Temporal corner lock in KivyCamera; gate capture; read_sudoku_from_corners using locked quad
     status: pending
@@ -70,8 +70,8 @@ Expected result: highlight cost drops enough that preview stays responsive witho
 
 File: `[core/vision.py](core/vision.py)` (mainly `largest_contour_area` → richer finder)
 
-1. **Shared `find_sudoku_quad`**
-  Centralize preprocess → contours → candidate filter → best pick. Fix the `reorder_points` docstring to match actual TL, TR, BL, BR order used with `pts2`.
+1. **Shared `find_sudoku_quad`** — done
+  Centralize preprocess → contours → candidate filter → best pick as `find_sudoku_quad`. Fixed `reorder_points` docstring to TL, TR, BL, BR.
 2. **Tighter geometric priors** (reject early)
   - Area between ~15% and ~85% of frame (or of downscaled frame, consistently)  
   - Aspect ratio ≈ 1.0 (e.g. 0.85–1.15)  
