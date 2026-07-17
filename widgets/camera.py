@@ -43,6 +43,7 @@ class KivyCamera(Image):
         self._clock_ev = None
         self._last_contour = None
         self._next_detect_at = 0.0
+        self._preview_texture: Texture | None = None
         kwargs = dict(kwargs)
         kwargs.pop("play", None)
         index = kwargs.pop("index", 0)
@@ -63,6 +64,7 @@ class KivyCamera(Image):
         self.play = False
         self._last_contour = None
         self._next_detect_at = 0.0
+        self._preview_texture = None
         if self._clock_ev is not None:
             self._clock_ev.cancel()
             self._clock_ev = None
@@ -128,6 +130,15 @@ class KivyCamera(Image):
         self.play = True
         self._clock_ev = Clock.schedule_interval(self._on_ip_frame, 1 / 30)
 
+    def _ensure_preview_texture(self, width: int, height: int) -> Texture:
+        tex = self._preview_texture
+        if tex is None or tex.width != width or tex.height != height:
+            tex = Texture.create(size=(width, height), colorfmt="rgba")
+            self._preview_texture = tex
+            self.texture = tex
+            self.texture_size = [width, height]
+        return tex
+
     def _process_frame_rgba(self, frame_rgba):
         now = perf_counter()
         if now >= self._next_detect_at:
@@ -148,14 +159,13 @@ class KivyCamera(Image):
         else:
             frame_with_highlight = frame_rgba
 
+        height, width = frame_with_highlight.shape[:2]
         buf = cv2.flip(frame_with_highlight, 1).tobytes()
-        image_texture = Texture.create(
-            size=(frame_with_highlight.shape[1], frame_with_highlight.shape[0]),
-            colorfmt="rgba",
-        )
-        image_texture.blit_buffer(buf, colorfmt="rgba", bufferfmt="ubyte")
-        self.texture = image_texture
-        self.texture_size = list(image_texture.size)
+        tex = self._ensure_preview_texture(width, height)
+        tex.blit_buffer(buf, colorfmt="rgba", bufferfmt="ubyte")
+        if self.canvas is None:
+            return
+        self.canvas.ask_update()
 
     def _on_device_tex(self, camera):
         if camera.texture is None:
