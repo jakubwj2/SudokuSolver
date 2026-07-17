@@ -3,7 +3,7 @@ name: Vision camera optimizations
 overview: Improve live sudoku detection performance and accuracy by sharing a single quad finder, running detection on a downscaled/throttled path with outline-only overlay, then scoring and temporally locking grid-like candidates for capture.
 todos:
   - id: phase1-perf
-    content: "Downscale (done) + throttle (done); outline-only overlay; reuse Texture; avoid full-frame CV copy"
+    content: "Downscale (done) + throttle (done) + fill toggle (done); reuse Texture; avoid full-frame CV copy"
     status: pending
   - id: phase2-quad
     content: Extract find_sudoku_quad with geometry priors, morphology, multi-candidate grid scoring; share with read_sudoku
@@ -57,8 +57,8 @@ Files: `[core/vision.py](core/vision.py)`, `[widgets/camera.py](widgets/camera.p
   Resize to ~480 px wide before preprocess/contours; scale corners back via `find_sudoku_contour`.
 2. **Throttle detection in `KivyCamera`** — done
   Preview every frame; `find_sudoku_contour` at 8 Hz (`_DETECT_INTERVAL_S`); reuse `_last_contour` for overlay between detections.
-3. **Outline-only live overlay**
-  Replace alpha `draw_contours` fill on the live path with `cv2.polylines` / thickness-only draw. Leave filled/alpha helper unused for preview (or bbox-clipped later if needed).
+3. **Outline-only live overlay** — code toggle
+  Keep fill by default (`_HIGHLIGHT_FILL = True`, alpha `0.25`). Set `_HIGHLIGHT_FILL = False` in `widgets/camera.py` for outline-only (skips full-frame mask + `addWeighted`).
 4. **Reuse Kivy texture**
   In `_process_frame_rgba`, create `Texture` once (recreate only on size change); each frame only flip + `blit_buffer`.
 5. **Stop unconditional full-frame copy for CV**

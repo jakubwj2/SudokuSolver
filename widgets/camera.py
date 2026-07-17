@@ -17,6 +17,13 @@ from core.vision import draw_contours, find_sudoku_contour
 # Contour detection rate; preview still updates every frame using the last contour.
 _DETECT_INTERVAL_S = 1 / 10
 
+# Preview highlight: outline always; set False to skip the filled blend (cheaper).
+
+_HIGHLIGHT_FILL = platform != "android"
+_HIGHLIGHT_FILL_ALPHA = 0.25
+_HIGHLIGHT_COLOR = (255, 255, 0, 255)
+_HIGHLIGHT_THICKNESS = 2
+
 
 class KivyCamera(Image):
     """Live camera preview with optional sudoku contour highlight.
@@ -134,8 +141,9 @@ class KivyCamera(Image):
             draw_contours(
                 frame_with_highlight,
                 [self._last_contour],
-                color=(255, 255, 0, 255),
-                thickness=2,
+                color=_HIGHLIGHT_COLOR,
+                thickness=_HIGHLIGHT_THICKNESS,
+                alpha=_HIGHLIGHT_FILL_ALPHA if _HIGHLIGHT_FILL else 0.0,
             )
         else:
             frame_with_highlight = frame_rgba
