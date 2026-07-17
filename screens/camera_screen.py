@@ -9,12 +9,13 @@ from kivy.uix.screenmanager import Screen
 
 from app.utils import get_app
 from core.vision import read_sudoku
+from widgets.camera import KivyCamera
 
 
 class CameraScreen(Screen):
     """Camera preview and sudoku capture. Layout lives in kv/sudoku.kv."""
 
-    my_camera = ObjectProperty(None)
+    my_camera: KivyCamera = ObjectProperty(None)
 
     def on_enter(self, *args):
         self.my_camera.start_capture()

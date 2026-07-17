@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from time import perf_counter
+
 import cv2
 import numpy as np
 from kivy import platform
@@ -10,7 +12,10 @@ from kivy.properties import BooleanProperty, ObjectProperty
 from kivy.uix.image import Image
 
 from app.utils import get_app
-from core.vision import try_draw_sudoku_highlight
+from core.vision import draw_contours, find_sudoku_contour
+
+# Contour detection rate; preview still updates every frame using the last contour.
+_DETECT_INTERVAL_S = 1 / 10
 
 
 class KivyCamera(Image):
@@ -29,6 +34,8 @@ class KivyCamera(Image):
         self._camera = None
         self._cap = None
         self._clock_ev = None
+        self._last_contour = None
+        self._next_detect_at = 0.0
         kwargs = dict(kwargs)
         kwargs.pop("play", None)
         index = kwargs.pop("index", 0)
@@ -47,6 +54,8 @@ class KivyCamera(Image):
 
     def stop_capture(self):
         self.play = False
+        self._last_contour = None
+        self._next_detect_at = 0.0
         if self._clock_ev is not None:
             self._clock_ev.cancel()
             self._clock_ev = None
@@ -113,9 +122,23 @@ class KivyCamera(Image):
         self._clock_ev = Clock.schedule_interval(self._on_ip_frame, 1 / 30)
 
     def _process_frame_rgba(self, frame_rgba):
-        ret, frame_with_highlight = try_draw_sudoku_highlight(frame_rgba.copy())
-        if ret:
-            self.img = frame_rgba
+        now = perf_counter()
+        if now >= self._next_detect_at:
+            self._next_detect_at = now + _DETECT_INTERVAL_S
+            self._last_contour = find_sudoku_contour(frame_rgba)
+            if self._last_contour is not None:
+                self.img = frame_rgba
+
+        if self._last_contour is not None:
+            frame_with_highlight = frame_rgba.copy()
+            draw_contours(
+                frame_with_highlight,
+                [self._last_contour],
+                color=(255, 255, 0, 255),
+                thickness=2,
+            )
+        else:
+            frame_with_highlight = frame_rgba
 
         buf = cv2.flip(frame_with_highlight, 1).tobytes()
         image_texture = Texture.create(
