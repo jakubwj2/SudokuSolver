@@ -6,7 +6,7 @@ todos:
     content: "Phase 1 complete (downscale, throttle, fill toggle, texture reuse, conditional copy)"
     status: completed
   - id: phase2-quad
-    content: "find_sudoku_quad shared API (step 1 done); geometry priors; multi-candidate grid scoring; morphology; wire read_sudoku"
+    content: "find_sudoku_quad (done) + geometry priors (done); multi-candidate grid scoring; morphology; wire read_sudoku"
     status: in_progress
   - id: phase3-lock
     content: Temporal corner lock in KivyCamera; gate capture; read_sudoku_from_corners using locked quad
@@ -72,11 +72,8 @@ File: `[core/vision.py](core/vision.py)` (mainly `largest_contour_area` → rich
 
 1. **Shared `find_sudoku_quad`** — done
   Centralize preprocess → contours → candidate filter → best pick as `find_sudoku_quad`. Fixed `reorder_points` docstring to TL, TR, BL, BR.
-2. **Tighter geometric priors** (reject early)
-  - Area between ~15% and ~85% of frame (or of downscaled frame, consistently)  
-  - Aspect ratio ≈ 1.0 (e.g. 0.85–1.15)  
-  - Convex quad; prefer non-border-hugging corners when possible  
-   Replace/remove the weak `bb_filled` diagonal heuristic.
+2. **Tighter geometric priors** — done
+  Area 15–85% of detection frame (and absolute min floor); aspect 0.85–1.15 via `minAreaRect`; require convex quad; prefer fewer border-hugging corners, then largest area. Removed `bb_filled` heuristic.
 3. **Multi-candidate + grid score**
   Keep top-N area quads that pass geometry. For each: warp to a small square (e.g. 180–270 px), score grid-likeness (morphological horizontal/vertical line extract or Hough; reward ~8–10 strong lines each way / lattice energy). Return the best score above a threshold, else `None`.
 4. **Light morphology on the binary image**
