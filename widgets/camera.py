@@ -49,7 +49,9 @@ class KivyCamera(Image):
     resolution = ObjectProperty((1280, 720))
 
     def __init__(self, **kwargs):
-        self.img = None
+        self.success_img = None
+        self.success_contour = None
+
         self._camera = None
         self._cap = None
         self._clock_ev = None
@@ -75,6 +77,9 @@ class KivyCamera(Image):
 
     def stop_capture(self):
         """Stops the camera and releases the resources (contours, texture, captures, clocks etc.)."""
+        self.success_img = None
+        self.success_contour = None
+
         self.play = False
         self._last_contour = None
         self._next_detect_at = 0.0
@@ -159,7 +164,8 @@ class KivyCamera(Image):
             self._next_detect_at = now + _DETECT_INTERVAL_S
             self._last_contour = find_sudoku_quad(frame_rgba)
             if self._last_contour is not None:
-                self.img = frame_rgba
+                self.success_img = frame_rgba
+                self.success_contour = self._last_contour
 
         if self._last_contour is not None:
             frame_with_highlight = frame_rgba.copy()

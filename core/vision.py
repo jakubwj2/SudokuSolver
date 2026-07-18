@@ -389,46 +389,22 @@ def draw_contours(
     cv2.drawContours(frame, contours, indices, color, thickness)
 
 
-def try_draw_sudoku_highlight(img: np.ndarray) -> tuple[bool, np.ndarray]:
-    """
-    Try to draw a highlight around the sudoku.
-
-    Args:
-        img (np.ndarray): The sudoku image to draw the highlight on.
-
-    Returns:
-        tuple[bool, np.ndarray]: A tuple containing a boolean indicating success and the image with the highlight.
-    """
-    largest_contour = find_sudoku_quad(img)
-    if largest_contour is None:
-        return False, img
-
-    draw_contours(img, [largest_contour], color=(255, 255, 0, 255), thickness=2)
-    return True, img
-
-
-def read_sudoku(img: np.ndarray) -> np.ndarray | None:
+def read_sudoku(img: np.ndarray, contour: np.ndarray) -> np.ndarray:
     """
     Read the sudoku from the image.
 
     Args:
         img (np.ndarray): The sudoku image to read.
-
+        contour (np.ndarray): The contour of the sudoku to read.
     Returns:
-        np.ndarray | None: The sudoku array or None if no sudoku is found.
+        np.ndarray: The sudoku array.
     """
-    largest_contour = find_sudoku_quad(img)
-
-    if largest_contour is None:
-        print("No sudoku found!")
-        return None
-
-    largest_contour = reorder_points(largest_contour)
+    contour = reorder_points(contour)
 
     width = 450
     height = 450
 
-    pts1 = np.array(largest_contour, dtype=np.float32)
+    pts1 = np.array(contour, dtype=np.float32)
     pts2 = np.array(
         [[0, 0], [width, 0], [0, height], [width, height]], dtype=np.float32
     )
@@ -458,7 +434,12 @@ if __name__ == "__main__":
     start_time = time.time()
     IMG_PATH = "SudokuPhotos/2026-07-14_17-21-01.png"
     img = np.array(cv2.imread(IMG_PATH))
-    array = read_sudoku(img)
+    contour = find_sudoku_quad(img)
+    if contour is None:
+        print("No sudoku found!")
+        raise ValueError("No sudoku found!")
+
+    array = read_sudoku(img, contour)
     print(array)
     end_time = time.time()
     print(f"Time taken: {end_time - start_time} seconds")
