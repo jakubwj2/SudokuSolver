@@ -7,12 +7,6 @@ from typing import Sequence
 import cv2
 import numpy as np
 
-from core.config import get_config
-from core.recognizers import get_digit_recognizer
-from core.recognizers.protocol import DigitRecognizer
-
-_model: DigitRecognizer | None = None
-
 # Contour detection runs on a downscaled copy; corners are mapped back to full-res.
 _DETECT_MAX_WIDTH = 480
 # Minimum contour area at "full" scale (~252x252). Scaled down with the detect image.
@@ -50,14 +44,6 @@ class GridScore:
     value: float
     horizontal_lines: int
     vertical_lines: int
-
-
-def _get_model() -> DigitRecognizer:
-    global _model
-    if _model is None:
-        _model = get_digit_recognizer()
-        _model.load(str(get_config().paths.model))
-    return _model
 
 
 def _odd_kernel(size: float, *, minimum: int = 3) -> int:
@@ -111,26 +97,6 @@ def sudoku_pre_processing(img: np.ndarray, scale: float) -> np.ndarray:
         2,
     )
     return img_thresh
-
-
-def cell_pre_processing(img: np.ndarray) -> np.ndarray:
-    """
-    Preprocess the individual cells to make Machine Learning more accurate and consistent.
-
-    Args:
-        img (np.ndarray): The individual cell image to preprocess.
-
-    Returns:
-        np.ndarray: The preprocessed individual cell image.
-    """
-    crop = 7
-    img = img[crop:-crop, crop:-crop]
-    img = cv2.resize(img, (28, 28))
-    # img = cv2.equalizeHist(img)
-    img = img.reshape(img.shape[0], img.shape[1], 1)
-    img = img / 255
-    img = 1.0 - img
-    return img
 
 
 def _geometry_quad_candidates(
@@ -344,23 +310,6 @@ def reorder_points(points: np.ndarray) -> np.ndarray:
     return new_points
 
 
-def split_boxes(img: np.ndarray) -> list[np.ndarray]:
-    """
-    Split the sudoku into 81 individual cells.
-
-    Args:
-        img (np.ndarray): The sudoku image to split.
-
-    Returns:
-        list[np.ndarray]: A flattened list of individual cells.
-    """
-    boxes = []
-    for row in np.vsplit(img, 9):
-        for box in np.hsplit(row, 9):
-            boxes.append(box)
-    return boxes
-
-
 def draw_contours(
     frame: np.ndarray,
     contours: Sequence[np.ndarray],
@@ -389,47 +338,10 @@ def draw_contours(
     cv2.drawContours(frame, contours, indices, color, thickness)
 
 
-def read_sudoku(img: np.ndarray, contour: np.ndarray) -> np.ndarray:
-    """
-    Read the sudoku from the image.
-
-    Args:
-        img (np.ndarray): The sudoku image to read.
-        contour (np.ndarray): The contour of the sudoku to read.
-    Returns:
-        np.ndarray: The sudoku array.
-    """
-    contour = reorder_points(contour)
-
-    width = 450
-    height = 450
-
-    pts1 = np.array(contour, dtype=np.float32)
-    pts2 = np.array(
-        [[0, 0], [width, 0], [0, height], [width, height]], dtype=np.float32
-    )
-    matrix = cv2.getPerspectiveTransform(pts1, pts2)
-    imgWarpColored = cv2.warpPerspective(img, matrix, (width, height))
-    imgWarpGray = cv2.cvtColor(imgWarpColored, cv2.COLOR_RGBA2GRAY)
-
-    boxes = split_boxes(imgWarpGray)
-    cells = np.array(list(map(cell_pre_processing, boxes)))
-
-    predictions = []
-
-    model = _get_model()
-    for cell in cells:
-        predictions.append(model.pred(np.array([cell])))
-
-    Y_pred_classes = np.argmax(predictions, axis=2)
-
-    result = Y_pred_classes.reshape(9, 9)
-
-    return result
-
-
 if __name__ == "__main__":
     import time
+
+    from core.ocr import read_sudoku
 
     start_time = time.time()
     IMG_PATH = "SudokuPhotos/2026-07-14_17-21-01.png"

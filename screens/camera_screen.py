@@ -8,7 +8,7 @@ from kivy.properties import ObjectProperty
 from kivy.uix.screenmanager import Screen
 
 from app.utils import get_app
-from core.vision import read_sudoku
+from core.ocr import read_sudoku
 from widgets.camera import KivyCamera
 
 

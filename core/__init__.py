@@ -1,1 +1,1 @@
-"""Domain logic: sudoku solving, vision, config (no Kivy UI)."""
+"""Domain logic: sudoku solving, vision, OCR, config (no Kivy UI)."""
