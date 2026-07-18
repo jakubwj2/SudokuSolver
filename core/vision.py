@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import bisect
+from dataclasses import dataclass
 from typing import Sequence
 
 import cv2
@@ -23,8 +25,31 @@ _MIN_AREA_FRAME_FRAC = 0.15
 _MAX_AREA_FRAME_FRAC = 0.85
 _MIN_ASPECT = 0.85
 _MAX_ASPECT = 1.15
-_MIN_BORDER_MARGIN_PX = 2
-_BORDER_MARGIN_FRAC = 0.02
+
+# Multi-candidate grid scoring (on the detection-sized frame).
+_TOP_QUAD_CANDIDATES = 5
+_GRID_WARP_SIZE = 225
+_MIN_GRID_SCORE = 0.3
+_GRID_PEAK_THRESH = 0.25
+_IDEAL_GRID_LINES = 10
+_GRID_LINE_SPAN_FRAC = 0.45
+
+
+@dataclass(frozen=True, slots=True)
+class QuadCandidate:
+    """A geometry-valid quad before grid scoring."""
+
+    area: float
+    quad: np.ndarray
+
+
+@dataclass(frozen=True, slots=True)
+class GridScore:
+    """How grid-like a warped quad looks."""
+
+    value: float
+    horizontal_lines: int
+    vertical_lines: int
 
 
 def _get_model() -> DigitRecognizer:
@@ -58,7 +83,7 @@ def _prepare_detection_image(img: np.ndarray) -> tuple[np.ndarray, float]:
     return small, scale
 
 
-def sudoku_pre_processing(img: np.ndarray) -> np.ndarray:
+def sudoku_pre_processing(img: np.ndarray, scale: float) -> np.ndarray:
     """
     Preprocess an RGBA frame for contour detection.
 
@@ -68,12 +93,10 @@ def sudoku_pre_processing(img: np.ndarray) -> np.ndarray:
 
     Args:
         img (np.ndarray): The sudoku image to preprocess.
-
+        scale (float): The scale factor to map coords back to ``img``.
     Returns:
         np.ndarray: The preprocessed sudoku image.
     """
-    width = img.shape[1]
-    scale = width / _PREPROCESS_REF_WIDTH
     blur_k = _odd_kernel(5 * scale)
     block_size = _odd_kernel(11 * scale)
 
@@ -110,50 +133,24 @@ def cell_pre_processing(img: np.ndarray) -> np.ndarray:
     return img
 
 
-def _border_hug_count(
-    quad: np.ndarray,
-    frame_width: int,
-    frame_height: int,
-    margin: int,
-) -> int:
-    """How many corners lie within ``margin`` px of the frame edge."""
-    count = 0
-    for x, y in quad.reshape(-1, 2):
-        if (
-            x <= margin
-            or y <= margin
-            or x >= frame_width - 1 - margin
-            or y >= frame_height - 1 - margin
-        ):
-            count += 1
-    return count
-
-
-def largest_contour_area(
+def _geometry_quad_candidates(
     contours: Sequence[np.ndarray],
     *,
     frame_shape: tuple[int, int],
     min_area: float = _MIN_CONTOUR_AREA,
-) -> np.ndarray | None:
+    top_n: int = _TOP_QUAD_CANDIDATES,
+) -> list[QuadCandidate]:
     """
-    Pick the best sudoku-like 4-point contour.
+    Return up to ``top_n`` geometry-valid quads, largest area first.
 
-    Applies geometric priors (area fraction, near-square aspect, convexity),
-    prefers quads whose corners are inset from the frame border, then largest area.
+    Priors: area fraction, near-square ``minAreaRect`` aspect, convexity.
     """
     frame_height, frame_width = frame_shape[:2]
     frame_area = float(frame_width * frame_height)
     area_lo = max(min_area, _MIN_AREA_FRAME_FRAC * frame_area)
     area_hi = _MAX_AREA_FRAME_FRAC * frame_area
-    margin = max(
-        _MIN_BORDER_MARGIN_PX,
-        int(round(_BORDER_MARGIN_FRAC * min(frame_width, frame_height))),
-    )
 
-    # (border_hug_count, -area, quad) — lower hug first, then larger area
-    best_key: tuple[int, float] | None = None
-    best_quad: np.ndarray | None = None
-
+    scored: list[QuadCandidate] = []
     for contour in contours:
         area = cv2.contourArea(contour)
         if area < area_lo or area > area_hi:
@@ -171,42 +168,160 @@ def largest_contour_area(
         if aspect < _MIN_ASPECT or aspect > _MAX_ASPECT:
             continue
 
-        hug = _border_hug_count(quad, frame_width, frame_height, margin)
-        key = (hug, -area)
-        if best_key is None or key < best_key:
-            best_key = key
-            best_quad = quad
+        if len(scored) < top_n:
+            bisect.insort(
+                scored, QuadCandidate(area=area, quad=quad), key=lambda item: item.area
+            )
+        elif area > scored[0].area:
+            bisect.insort(scored, scored[0], key=lambda item: item.area)
+            scored.pop(0)
 
-    return best_quad
+    return scored
+
+
+def _count_projection_peaks(proj: np.ndarray) -> int:
+    """Count local maxima in a 1-D projection (heuristic for grid lines)."""
+    if proj.size < 3 or float(proj.max()) <= 0:
+        return 0
+
+    p = proj.astype(np.float64) / float(proj.max())
+    # Light smooth only — heavy blur merges neighboring grid lines.
+    p = cv2.GaussianBlur(p.reshape(-1, 1), (1, 3), 0).ravel()
+
+    peaks = 0
+    for i in range(1, len(p) - 1):
+        if p[i] >= _GRID_PEAK_THRESH and p[i] >= p[i - 1] and p[i] > p[i + 1]:
+            peaks += 1
+    return peaks
+
+
+def _count_long_line_components(line_mask: np.ndarray, *, horizontal: bool) -> int:
+    """Count connected components that span most of the warp (grid lines)."""
+    _nlabels, _labels, stats, _centroids = cv2.connectedComponentsWithStats(
+        line_mask, connectivity=8
+    )
+    if horizontal:
+        min_span = _GRID_LINE_SPAN_FRAC * line_mask.shape[1]
+        return sum(
+            1 for i in range(1, _nlabels) if stats[i, cv2.CC_STAT_WIDTH] >= min_span
+        )
+    min_span = _GRID_LINE_SPAN_FRAC * line_mask.shape[0]
+    return sum(
+        1 for i in range(1, _nlabels) if stats[i, cv2.CC_STAT_HEIGHT] >= min_span
+    )
+
+
+def _line_count_score(line_count: int) -> float:
+    """Reward ~8-10 lines (sudoku has 10 grid lines including borders)."""
+    if line_count < 5:
+        return 0.0
+    return max(0.0, 1.0 - abs(line_count - _IDEAL_GRID_LINES) / 8.0)
+
+
+def _score_sudoku_grid(gray_square: np.ndarray) -> GridScore:
+    """
+    Score how grid-like a warped square looks.
+
+    Uses morphological horizontal/vertical line extraction plus projection peaks
+    and long connected components. ``GridScore.value`` is in ``[0, 1]``.
+    """
+    # # gray_square needs to be set to blur when using the GaussianBlur
+    # blur = cv2.GaussianBlur(gray_square, (3, 3), 0)
+    thr = cv2.adaptiveThreshold(
+        gray_square,
+        255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY_INV,
+        11,
+        2,
+    )
+    n = gray_square.shape[0]
+    klen = max(n // 20, 9)
+    if klen % 2 == 0:
+        klen += 1
+
+    horizontal = cv2.morphologyEx(
+        thr,
+        cv2.MORPH_OPEN,
+        cv2.getStructuringElement(cv2.MORPH_RECT, (klen, 1)),
+    )
+    vertical = cv2.morphologyEx(
+        thr,
+        cv2.MORPH_OPEN,
+        cv2.getStructuringElement(cv2.MORPH_RECT, (1, klen)),
+    )
+
+    h_lines = max(
+        _count_projection_peaks(np.sum(horizontal, axis=1)),
+        _count_long_line_components(horizontal, horizontal=True),
+    )
+    v_lines = max(
+        _count_projection_peaks(np.sum(vertical, axis=0)),
+        _count_long_line_components(vertical, horizontal=False),
+    )
+    value = 0.5 * (_line_count_score(h_lines) + _line_count_score(v_lines))
+    return GridScore(
+        value=value,
+        horizontal_lines=h_lines,
+        vertical_lines=v_lines,
+    )
+
+
+def _warp_quad_gray(
+    gray: np.ndarray,
+    quad: np.ndarray,
+    size: int = _GRID_WARP_SIZE,
+) -> np.ndarray:
+    ordered = reorder_points(quad).astype(np.float32)
+    pts1 = ordered.reshape(4, 2)
+    pts2 = np.array(
+        [[0, 0], [size, 0], [0, size], [size, size]],
+        dtype=np.float32,
+    )
+    matrix = cv2.getPerspectiveTransform(pts1, pts2)
+    return cv2.warpPerspective(gray, matrix, (size, size))
 
 
 def find_sudoku_quad(img: np.ndarray) -> np.ndarray | None:
     """
     Find the best sudoku-like quad in ``img``.
 
-    Pipeline: downscale → preprocess → contours → candidate filter → best pick.
+    Pipeline: downscale → preprocess → contours → geometry filter → top-N candidates →
+    grid-score warped crops → best above threshold.
+
     Returns a 4-point contour in full-resolution image coordinates, or ``None``.
     """
     small, scale = _prepare_detection_image(img)
-    thresh = sudoku_pre_processing(small)
+    thresh = sudoku_pre_processing(small, 1.0 / scale)
     contours, _hierarchy = cv2.findContours(
         thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
     )
 
     min_area = _MIN_CONTOUR_AREA / (scale**2)
-    largest_contour = largest_contour_area(
+    candidates = _geometry_quad_candidates(
         contours,
         frame_shape=small.shape[:2],
         min_area=min_area,
     )
-    if largest_contour is None:
+    if not candidates:
+        return None
+
+    gray = cv2.cvtColor(small, cv2.COLOR_RGBA2GRAY)
+    best_quad: np.ndarray | None = None
+    best_score = -1.0
+    for candidate in candidates:
+        warped = _warp_quad_gray(gray, candidate.quad)
+        score = _score_sudoku_grid(warped)
+        if score.value > best_score:
+            best_score = score.value
+            best_quad = candidate.quad
+
+    if best_quad is None or best_score < _MIN_GRID_SCORE:
         return None
 
     if scale != 1.0:
-        largest_contour = np.round(largest_contour.astype(np.float64) * scale).astype(
-            np.int32
-        )
-    return largest_contour
+        best_quad = np.round(best_quad.astype(np.float64) * scale).astype(np.int32)
+    return best_quad
 
 
 def reorder_points(points: np.ndarray) -> np.ndarray:
