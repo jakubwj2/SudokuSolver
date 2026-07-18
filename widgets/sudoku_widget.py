@@ -16,8 +16,7 @@ from kivy.utils import get_color_from_hex
 
 from app.utils import get_app
 from core.sudoku import CELL_COORDS
-
-Color = tuple[float, float, float, float]
+from typings.color import Color
 
 
 class SudokuWidget(GridLayout):
@@ -45,10 +44,10 @@ class SudokuCell(ToggleButtonBehavior, AnchorLayout):  # pyright: ignore[reportI
     highlight: bool = BooleanProperty(False)
 
     BASE: Color = (0, 0, 0, 0)
-    HIGHLIGHT: Color = (0, 0, 0.5, 0.5)
+    HIGHLIGHT: Color = (0.5, 0.5, 1, 0.5)
     ERROR: Color = (1, 0, 0, 0.5)
     LOCKED: Color = (1, 1, 1, 1)
-    SELECT: Color = (0, 0, 1, 0.5)
+    SELECT: Color = (0.2, 0.2, 0.3, 0.75)
 
     TEXT_BASE = get_color_from_hex("#08313a")
     TEXT_LOCKED: Color = (0, 0, 0, 1)
@@ -103,15 +102,14 @@ class SudokuCell(ToggleButtonBehavior, AnchorLayout):  # pyright: ignore[reportI
     def _refresh_style(self):
 
         bg = self.BASE
-
         if self.highlight:
-            bg = blend(bg, self.HIGHLIGHT)
+            bg = self.HIGHLIGHT
         if self.state == "down":
-            bg = blend(bg, self.SELECT)
+            bg = self.SELECT
         if self.error:
-            bg = blend(bg, self.ERROR)
+            bg = self.ERROR
         if self.locked:
-            bg = blend(bg, self.LOCKED)
+            bg = self.LOCKED
 
         if self.error:
             text_color = self.TEXT_ERROR
@@ -122,13 +120,3 @@ class SudokuCell(ToggleButtonBehavior, AnchorLayout):  # pyright: ignore[reportI
 
         self.background_color = bg
         self.text_color = text_color
-
-
-def blend(bg: Color, fg: Color) -> Color:
-    fg_alpha_inv = 1 - fg[3]
-    return (
-        bg[0] * fg_alpha_inv + fg[0] * fg[3],
-        bg[1] * fg_alpha_inv + fg[1] * fg[3],
-        bg[2] * fg_alpha_inv + fg[2] * fg[3],
-        bg[3] + fg[3],
-    )
