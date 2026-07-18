@@ -4,16 +4,16 @@ overview: Rename KivyCamera to CameraPreview and split native vs IP into subclas
 todos:
   - id: rename-parent
     content: Add CameraPreview(Image) base with shared process/texture/contour/img; abstract _open_capture/_close_capture hooks
-    status: pending
+    status: completed
   - id: subclass-backends
     content: DeviceCameraPreview (CoreCamera only) and IpWebcamPreview (VideoCapture+Clock only)
-    status: pending
+    status: completed
   - id: resolution-constants
-    content: "Unify DEFAULT_RESOLUTION (1920,1080) + RESOLUTION_CANDIDATES; align ObjectProperty, __init__, kv, Android open list"
-    status: pending
+    content: Unify DEFAULT_RESOLUTION (1920,1080) + RESOLUTION_CANDIDATES; align ObjectProperty, __init__, kv, Android open list
+    status: completed
   - id: wire-kv-imports
     content: Factory or platform helper so kv/CameraScreen use one preview type; remove KivyCamera
-    status: pending
+    status: completed
 isProject: true
 ---
 

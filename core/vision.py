@@ -75,7 +75,7 @@ def sudoku_pre_processing(img: np.ndarray, scale: float) -> np.ndarray:
 
     Blur and adaptive-threshold block size scale with image width so downscaled
     detection stays comparable to the original 1920-wide tuning. Callers (e.g.
-    ``KivyCamera``) are expected to convert to RGBA before this runs.
+    ``CameraPreview``) are expected to convert to RGBA before this runs.
 
     Args:
         img (np.ndarray): The sudoku image to preprocess.
