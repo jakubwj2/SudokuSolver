@@ -46,7 +46,7 @@ class IpWebcamPreview(CameraPreview):
             return
         try:
             # # Uncomment when using IP Webcam portrait mode
-            # frame_bgr = cv2.rotate(frame_bgr, cv2.ROTATE_90_ANTICLOCKWISE)
+            frame_bgr = cv2.rotate(frame_bgr, cv2.ROTATE_90_CLOCKWISE)
             frame_rgba = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGBA)
             self._process_frame_rgba(frame_rgba)
         except Exception as exc:

@@ -77,6 +77,7 @@ class NativeCameraPreview(CameraPreview):
             pixels = np.frombuffer(camera.texture.pixels, np.uint8)
             frame = pixels.reshape(height, width, 4)
             frame = cv2.flip(frame, 0)
+            frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
             self._process_frame_rgba(frame)
         except Exception as exc:
             Logger.warning("Camera: device frame update failed (%s)", exc)

@@ -16,7 +16,8 @@ from kivy.utils import get_color_from_hex
 
 from app.utils import get_app
 from core.sudoku import CELL_COORDS
-from typings.color import Color
+
+Color = tuple[float, float, float, float]
 
 
 class SudokuWidget(GridLayout):

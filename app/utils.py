@@ -4,10 +4,10 @@ from typing import TYPE_CHECKING, cast
 
 from kivy.app import App
 
-from typings.color import Color
-
 if TYPE_CHECKING:
     from app.sudoku_app import SudokuApp
+
+Color = tuple[float, float, float, float]
 
 
 def get_app() -> SudokuApp:
