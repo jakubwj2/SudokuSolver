@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <!--
+    Capture Sudoku — colour tokens (override when a quad is locked):
+      -capture-ring   outer shutter ring
+      -capture-core   inner disc / shutter
+      -capture-grid   mini sudoku grid
+    Defaults = idle (ready). Example captured state:
+      -capture-ring: #5cd85a;
+      -capture-core: #74ff72;
+      -capture-grid: #08313a;
+  -->
+
+  <!-- <style>
+    .ring  { stroke: var(-capture-ring,  #ffffff); }
+    .core  { fill:   var(-capture-core,  #ffffff); opacity: 0.92; }
+    .grid  { stroke: var(-capture-grid,  #08313a); }
+  </style> -->
+
+  <!-- Viewfinder corners -->
+  <!-- <path
+    class="ring"
+    d="M4 8.2V5.8A1.8 1.8 0 0 1 5.8 4H8.2M15.8 4H18.2A1.8 1.8 0 0 1 20 5.8V8.2M20 15.8v2.4A1.8 1.8 0 0 1 18.2 20H15.8M8.2 20H5.8A1.8 1.8 0 0 1 4 18.2V15.8"
+    stroke-width="1.75"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="none"
+  /> -->
+
+  <!-- Shutter disc -->
+  <circle class="ring" stroke="currentColor" cx="12" cy="12" r="6.4" stroke-width="1.75" fill="none" />
+  <circle class="core" stroke="currentColor" fill="currentColor" cx="12" cy="12" r="4.35" />
+
+  <!-- Mini 3×3 grid (reads as “sudoku capture”) -->
+  <!-- <g class="grid" stroke-width="1.15" stroke-linecap="round">
+    <rect x="9.15" y="9.15" width="5.7" height="5.7" rx="0.55" fill="none" />
+    <path d="M9.15 11.05h5.7M9.15 12.95h5.7M11.05 9.15v5.7M12.95 9.15v5.7" />
+  </g> -->
+</svg>

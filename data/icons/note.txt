@@ -1,0 +1,2 @@
+sed 's/currentColor/#ffffff/g' clear.svg > /tmp/clear_export.svg
+convert -background none -density 384 /tmp/clear_export.svg -resize 128x128 clear.png
