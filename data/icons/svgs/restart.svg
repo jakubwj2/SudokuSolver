@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <!-- Restart: circular arrow -->
+  <path
+    d="M4.5 12a7.5 7.5 0 0 1 12.6-5.5M19.5 12a7.5 7.5 0 0 1-12.6 5.5"
+    stroke="#ffffff"
+    stroke-width="1.75"
+    stroke-linecap="round"
+  />
+  <path
+    d="M17.2 3.8v4.2h-4.2"
+    stroke="#ffffff"
+    stroke-width="1.75"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M6.8 20.2v-4.2h4.2"
+    stroke="#ffffff"
+    stroke-width="1.75"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>

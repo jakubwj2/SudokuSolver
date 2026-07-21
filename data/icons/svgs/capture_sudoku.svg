@@ -27,8 +27,8 @@
   /> -->
 
   <!-- Shutter disc -->
-  <circle class="ring" stroke="currentColor" cx="12" cy="12" r="6.4" stroke-width="1.75" fill="none" />
-  <circle class="core" stroke="currentColor" fill="currentColor" cx="12" cy="12" r="4.35" />
+  <circle class="ring" stroke="#ffffff" cx="12" cy="12" r="6.4" stroke-width="1.75" fill="none" />
+  <circle class="core" stroke="#ffffff" fill="#ffffff" cx="12" cy="12" r="4.35" />
 
   <!-- Mini 3×3 grid (reads as “sudoku capture”) -->
   <!-- <g class="grid" stroke-width="1.15" stroke-linecap="round">

@@ -12,20 +12,20 @@
     l 1 -4.1 
     a 2 2 0 0 1 0.5 -0.9 
     L 14.6 4.4 Z"
-    stroke="currentColor"
+    stroke="#ffffff"
     stroke-width="1.75"
     stroke-linecap="round"
     stroke-linejoin="round"
   />
   <path
     d="M 13.3 6.3 L 17.8 10.8"
-    stroke="currentColor"
+    stroke="#ffffff"
     stroke-width="1.75"
     stroke-linecap="round"
   />
   <path
     d="M 3 21 L 5 19"
-    stroke="currentColor"
+    stroke="#ffffff"
     stroke-width="1.75"
     stroke-linecap="round"
   />
@@ -45,7 +45,7 @@
     l -1 -0
 
     "
-    stroke="currentColor"
+    stroke="#ffffff"
     stroke-width="1.75"
     stroke-linecap="round"
   />

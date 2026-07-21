@@ -2,7 +2,7 @@
   <!-- Camera: navigate to camera screen -->
   <path
     d="M8.2 6.5 9.1 4.9A1.6 1.6 0 0 1 10.45 4.2h3.1a1.6 1.6 0 0 1 1.35.7l.9 1.6H18a2.2 2.2 0 0 1 2.2 2.2v9.1A2.2 2.2 0 0 1 18 19.8H6A2.2 2.2 0 0 1 3.8 17.6V8.7A2.2 2.2 0 0 1 6 6.5h2.2Z"
-    stroke="currentColor"
+    stroke="#ffffff"
     stroke-width="1.75"
     stroke-linejoin="round"
   />
@@ -10,8 +10,8 @@
     cx="12"
     cy="12.6"
     r="3.6"
-    stroke="currentColor"
+    stroke="#ffffff"
     stroke-width="1.75"
   />
-  <circle cx="17.2" cy="9.4" r="0.85" fill="currentColor" />
+  <circle cx="17.2" cy="9.4" r="0.85" fill="#ffffff" />
 </svg>

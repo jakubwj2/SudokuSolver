@@ -6,19 +6,18 @@
     width="17"
     height="17"
     rx="2.25"
-    stroke="currentColor"
+    stroke="#ffffff"
     stroke-width="1.75"
   />
   <path
     d="M3.5 9.2h17M3.5 14.8h17M9.2 3.5v17M14.8 3.5v17"
-    stroke="currentColor"
+    stroke="#ffffff60"
     stroke-width="1.5"
     stroke-linecap="round"
-    opacity="0.55"
   />
   <path
     d="M8.2 12.4 10.7 14.9 15.8 9.2"
-    stroke="currentColor"
+    stroke="#ffffff"
     stroke-width="2"
     stroke-linecap="round"
     stroke-linejoin="round"
