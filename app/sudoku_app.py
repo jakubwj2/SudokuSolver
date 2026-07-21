@@ -16,7 +16,7 @@ from core.sudoku import Table
 from version import __version__
 from widgets.confirm_popup import ConfirmPopup
 from widgets.dial import DialButton
-from widgets.operation_button import OperationButton
+from widgets.operation_button import OperationButton, ToggleOperationButton
 from widgets.sudoku_widget import SudokuCell
 
 
@@ -84,8 +84,7 @@ class SudokuApp(App):
         if not self.sudoku_cells:
             Logger.warning("SudokuApp: no sudoku cells found at start")
             return
-        self.repopulate_sudoku()
-        self.highlight_cells_and_populate_candidates()
+        self.refresh_sudoku()
 
     def on_stop(self):
         if hasattr(self, "buttons"):
@@ -97,38 +96,46 @@ class SudokuApp(App):
     def load_captured_sudoku(self, new_sudoku: np.ndarray) -> None:
         """Replace the puzzle from a camera capture and show the grid screen."""
         self.table = Table(new_sudoku)
-        self.table.original_array = np.zeros((9, 9), dtype=np.int8)
-        self.repopulate_sudoku()
-        self.highlight_cells_and_populate_candidates()
+        self.table.given_sudoku = np.zeros((9, 9), dtype=np.int8)
+        self.refresh_sudoku()
         if self.sm is not None:
             self.sm.current = "sudoku"
 
     def repopulate_sudoku(self):
-        for cell, number, original in zip(
+        for cell, number, given_cell_number in zip(
             self.sudoku_cells,
             self.table.sudoku_array.flatten(),
-            self.table.original_array.flatten(),
+            self.table.given_sudoku.flatten(),
         ):
             cell.number = int(number)
-            cell.locked = original != 0
+            cell.locked = given_cell_number != 0
         self.populate_candidates(self.hide_candidates)
 
-    def on_solve(self, instance: OperationButton):
-        if instance.text == "Solve":
-            self.table.solve()
-            instance.text = "Restart"
-        else:
+    def on_solve(self, instance: ToggleOperationButton):
+        if self.table.is_solved():
             self.table.reset()
-            instance.text = "Solve"
-        self.repopulate_sudoku()
-        self.highlight_cells_and_populate_candidates()
-        self.deselect_cell()
-        self.deselect_number()
+            instance.toggled = False
+        else:
+            self.table.solve()
+            if len(self.table.solutions) != 1:
+                instance.toggled = False
+                print(
+                    "Invalid sudoku (solutions found: %d)" % len(self.table.solutions)
+                )
+            else:
+                instance.toggled = True
 
-    def on_lock(self, instance: OperationButton):
-        self.table.original_array = self.table.sudoku_array
-        self.table.reset()
-        self.repopulate_sudoku()
+        self.refresh_sudoku()
+
+    def on_lock(self, instance: ToggleOperationButton):
+        if self.table.is_locked() or self.table.is_empty():
+            instance.toggled = False
+            self.table.reset_given_sudoku()
+        else:
+            instance.toggled = True
+            self.table.set_given_sudoku()
+
+        self.refresh_sudoku()
 
     # def on_filter(self, instance: OperationButton):
     #     self.table.filter_candidates()
@@ -140,17 +147,14 @@ class SudokuApp(App):
     def on_clear(self, _instance):
         if self.selected_cell is not None:
             x, y = self.selected_cell.idx
-            if self.table.original_array[x, y] == 0:
+            if self.table.given_sudoku[x, y] == 0:
                 self.table.sudoku_array[x, y] = 0
                 self.sudoku_cells[x * 9 + y].number = 0
                 return
 
         def clear_all(_instance: OperationButton):
             self.table = Table()
-            self.repopulate_sudoku()
-            self.deselect_cell()
-            self.deselect_number()
-            self.highlight_cells_and_populate_candidates()
+            self.refresh_sudoku()
 
         popup = ConfirmPopup(
             on_ok=clear_all,
@@ -188,8 +192,9 @@ class SudokuApp(App):
             self.place_number(*cell_dial)
             self.deselect_cell()
 
-    def on_show_candidates(self, instance: OperationButton):
+    def on_show_candidates(self, instance: ToggleOperationButton):
         self.hide_candidates = not self.hide_candidates
+        instance.toggled = not self.hide_candidates
         self.populate_candidates(self.hide_candidates)
 
     def populate_candidates(self, hide: bool):
@@ -200,7 +205,6 @@ class SudokuApp(App):
 
         x, y = cell.idx
         if self.table.sudoku_array[x, y] == dial.number:
-            # self.on_clear(self.selected_cell)
             self.table.remove_number(x, y)
             cell.number = 0
             self.highlight_cells_and_populate_candidates()
@@ -222,8 +226,7 @@ class SudokuApp(App):
         if not number and self.selected_cell:
             number = self.selected_cell.number
 
-        if number:
-            self.highlight_valid_cells_for_number(number)
+        self.highlight_valid_cells_for_number(number)
         self.highlight_errors()
         self.populate_candidates(self.hide_candidates)
 
@@ -246,3 +249,15 @@ class SudokuApp(App):
         if self.selected_number is not None:
             self.selected_number.state = "normal"
             self.selected_number = None
+
+    def refresh_sudoku(self):
+        """Refresh the sudoku display to reflect the current state of the table. Refreshes:
+        - the sudoku cell numbers and locked status
+        - the highlights
+        - deselects the cell and dial digits
+        - populates the candidates
+        """
+        self.repopulate_sudoku()
+        self.deselect_cell()
+        self.deselect_number()
+        self.highlight_cells_and_populate_candidates()

@@ -5,7 +5,7 @@ from widgets.confirm_popup import ConfirmPopup
 from widgets.dial import DialButton, DialWidget
 from widgets.ip_webcam_preview import IpWebcamPreview
 from widgets.native_camera_preview import NativeCameraPreview
-from widgets.operation_button import OperationButton
+from widgets.operation_button import OperationButton, ToggleOperationButton
 from widgets.sudoku_widget import SudokuCell, SudokuWidget
 
 __all__ = [
@@ -16,6 +16,7 @@ __all__ = [
     "DialWidget",
     "IpWebcamPreview",
     "OperationButton",
+    "ToggleOperationButton",
     "SudokuCell",
     "SudokuWidget",
     "get_camera_preview_class",

@@ -1,6 +1,7 @@
 numpy
 kivy
 pillow
+cairosvg
 opencv-python>=4.8,<5
 ai-edge-litert>=2.0
 pyjnius

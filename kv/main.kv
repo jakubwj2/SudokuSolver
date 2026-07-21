@@ -42,15 +42,13 @@
                     PopMatrix
                 fit_mode: "fill"
 
-            Button:
-                text: ""
-                background_normal: "data/icons/back.png"
-                background_down: "data/icons/back.png"
-                border: 0, 0, 0, 0
+            OperationButton:
+                icon_source: "data/icons/pngs/back.png"
+                background_color: 0, 0, 0, 0
+                image_color: .33, .33, .33, 1
                 size_hint: None, None
                 size: dp(64), dp(64)
                 pos_hint: {"x": 0.02, "top": 0.98}
-                background_color: .33, .33, .33, 1
                 canvas.before:
                     Color:
                         rgba: .75, .75, .75, 0.5
@@ -69,14 +67,10 @@
             size_hint_y: 1 if root.width > root.height else None
             height: dp(180)
             OperationButton:
-                text: ""
-                background_normal: "data/icons/capture_sudoku.png"
-                background_down: "data/icons/capture_sudoku.png"
-                border: 0, 0, 0, 0
-                size_hint: None, None
-                size: dp(120), dp(120)
-                background_color: .33, .33, .33, 1
+                icon_source: "data/icons/pngs/capture_sudoku.png"
+                image_color: .5, .5, .5, 1
                 on_press: root.capture_sudoku()
+
 
 
 <SudokuScreen>
@@ -126,66 +120,48 @@
             size_hint_y: None
             height: dp(72)
             OperationButton:
-                text: ""
+                icon_source: "data/icons/pngs/clear.png"
                 on_press: app.on_clear(self)
-                Image:
-                    source: "data/icons/clear.png"
-                    allow_stretch: True
-                    keep_ratio: True
-                    size_hint: None, None
-                    size: min(self.parent.width, self.parent.height) * 0.75, min(self.parent.width, self.parent.height) * 0.75
-                    pos: self.parent.center_x - self.width / 2, self.parent.center_y - self.height / 2
-                    color: bg_primary_color
-            OperationButton:
-                text: ""
+            ToggleOperationButton:
+                default_icon_source: "data/icons/pngs/lock.png"
+                toggled_icon_source: "data/icons/pngs/unlock.png"
                 on_press: app.on_lock(self)
-                Image:
-                    source: "data/icons/lock.png"
-                    allow_stretch: True
-                    keep_ratio: True
-                    size_hint: None, None
-                    size: min(self.parent.width, self.parent.height) * 0.75, min(self.parent.width, self.parent.height) * 0.75
-                    pos: self.parent.center_x - self.width / 2, self.parent.center_y - self.height / 2
-                    color: bg_primary_color
             # OperationButton:
             #     text: "Filter"
             #     on_press: app.on_filter(self)
-            OperationButton:
-                text: ""
+            ToggleOperationButton:
+                default_icon_source: "data/icons/pngs/pencil.png"
+                toggled_icon_source: "data/icons/pngs/remove_pencil.png"
                 on_press: app.on_show_candidates(self)
-                Image:
-                    source: "data/icons/pencil.png"
-                    allow_stretch: True
-                    keep_ratio: True
-                    size_hint: None, None
-                    size: min(self.parent.width, self.parent.height) * 0.75, min(self.parent.width, self.parent.height) * 0.75
-                    pos: self.parent.center_x - self.width / 2, self.parent.center_y - self.height / 2
-                    color: bg_primary_color
-            OperationButton:
-                text: ""
+            ToggleOperationButton:
+                id: solve_toggle_button
+                default_icon_source: "data/icons/pngs/solve.png"
+                toggled_icon_source: "data/icons/pngs/restart.png"
                 on_press: app.on_solve(self)
-                Image:
-                    source: "data/icons/solve.png"
-                    allow_stretch: True
-                    keep_ratio: True
-                    size_hint: None, None
-                    size: min(self.parent.width, self.parent.height) * 0.75, min(self.parent.width, self.parent.height) * 0.75
-                    pos: self.parent.center_x - self.width / 2, self.parent.center_y - self.height / 2
-                    color: bg_primary_color
             OperationButton:
-                text: ""
+                icon_source: "data/icons/pngs/camera.png"
                 on_press:
                     root.manager.transition = RiseInTransition(duration = transition_len)
                     root.manager.current = "camera"
-                Image:
-                    source: "data/icons/camera.png"
-                    allow_stretch: True
-                    keep_ratio: True
-                    size_hint: None, None
-                    size: min(self.parent.width, self.parent.height) * 0.75, min(self.parent.width, self.parent.height) * 0.75
-                    pos: self.parent.center_x - self.width / 2, self.parent.center_y - self.height / 2
-                    color: bg_primary_color
 
+<OperationButton>:
+    size_hint: 1, 1
+    background_normal: ""
+    background_color: secondary_color
+    color: bg_primary_color
+    font_size: font_s
+    image_scale: 0.9
+
+    Image:
+        source: root.icon_source
+        size_hint: None, None
+        size: min(self.parent.width, self.parent.height) * root.image_scale, min(self.parent.width, self.parent.height) * root.image_scale
+        pos: self.parent.center_x - self.width / 2, self.parent.center_y - self.height / 2
+        color: root.image_color if root.image_color else bg_primary_color
+        opacity: 1 if root.icon_source else 0
+
+<ToggleOperationButton>:
+    icon_source: self.toggled_icon_source if self.toggled else self.default_icon_source
 
 <SudokuCell>
     anchor_x: "center"
@@ -220,14 +196,6 @@
     color: secondary_color
     font_size: font_s * 1.5
     group:"dial_buttons"
-
-
-<OperationButton>
-    size_hint: 1, 1
-    background_normal: ""
-    background_color: secondary_color
-    color: bg_primary_color
-    font_size: font_s
 
 
 <-ConfirmPopup>:

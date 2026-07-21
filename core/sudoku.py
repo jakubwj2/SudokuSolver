@@ -1,10 +1,13 @@
 from collections.abc import Iterator
 from itertools import islice, product
 from time import time
+from typing import Literal
 
 import numpy as np
 
 CELL_COORDS = tuple(product(range(9), range(9)))
+
+GridArray = np.ndarray[tuple[Literal[9], Literal[9]], np.dtype[np.int8]]
 
 
 class Table:
@@ -22,11 +25,11 @@ class Table:
         )
         self.empty = empty
         self.candidates = np.ndarray((9, 9), dtype=list)
-        self.original_array = np.array(self.sudoku_array)
+        self.given_sudoku: GridArray = np.array(self.sudoku_array, dtype=np.int8)
         self.gen_candidates()
         self.solutions = list()
 
-    def is_empty(self, x: int, y: int) -> np.bool:
+    def is_cell_empty(self, x: int, y: int) -> np.bool:
         """Check if the cell is empty.
         Args:
             x (int): The row index.
@@ -67,23 +70,6 @@ class Table:
             np.bool: True if the cell is valid for the number, False otherwise.
         """
 
-        # array = self.sudoku_array
-        # is_row_valid = np.all(array[x, :y] != number) and np.all(
-        #     array[x, y + 1 :] != number
-        # )
-
-        # is_column_valid = np.all(array[:x, y] != number) and np.all(
-        #     array[x + 1 :, y] != number
-        # )
-
-        # section_array = self.get_section(array, x // 3, y // 3).flatten()
-
-        # idx = x % 3 * 3 + y % 3
-        # is_section_valid = np.all(section_array[:idx] != number) and np.all(
-        #     section_array[idx + 1 :] != number
-        # )
-
-        # return is_row_valid and is_column_valid and is_section_valid
         return np.bool(number in self.get_valid_numbers_for_cell(x, y))
 
     def get_valid_numbers_for_cell(self, x: int, y: int) -> list[int]:
@@ -127,7 +113,7 @@ class Table:
             list[bool]: A list of booleans indicating if the cell is valid.
         """
         return [
-            not self.is_empty(x, y)
+            not self.is_cell_empty(x, y)
             and not self.is_valid_cell_for_number(self.sudoku_array[x, y], x, y)
             for x, y in CELL_COORDS
         ]
@@ -136,7 +122,9 @@ class Table:
         """Generate the candidates for all cells in the table."""
         for x, y in CELL_COORDS:
             self.candidates[x, y] = (
-                self.get_valid_numbers_for_cell(x, y) if self.is_empty(x, y) else None
+                self.get_valid_numbers_for_cell(x, y)
+                if self.is_cell_empty(x, y)
+                else None
             )
 
     # def filter_candidates(self):
@@ -312,7 +300,7 @@ class Table:
     def _backpropagation_single_solutonion(self, start_idx) -> bool:
         """Solve the Sudoku puzzle using backpropagation for a single solution."""
         for x, y in islice(CELL_COORDS, start_idx, 81):
-            if not self.is_empty(x, y):
+            if not self.is_cell_empty(x, y):
                 continue
 
             for n in self.get_valid_numbers_for_cell(x, y):
@@ -328,7 +316,7 @@ class Table:
     def _backpropagation_all_solutions(self, start_idx):
         """Solve the Sudoku puzzle using backpropagation for all solutions."""
         for x, y in islice(CELL_COORDS, start_idx, 81):
-            if not self.is_empty(x, y):
+            if not self.is_cell_empty(x, y):
                 continue
 
             for n in self.get_valid_numbers_for_cell(x, y):
@@ -340,15 +328,22 @@ class Table:
         self.solutions.append(self.sudoku_array.copy())
         print(len(self.solutions), end="\r")
 
+    def is_solved(self) -> bool:
+        """Check if the Sudoku puzzle is solved."""
+        return self._is_array_valid_solution(self.sudoku_array)
+
+    def _is_array_valid_solution(self, solution: np.ndarray) -> bool:
+        return self.validate(solution) and np.count_nonzero(solution) == 81
+
     def test_all_solutions(self):
-        for solution_idx in range(len(self.solutions)):
-            solution = self.solutions[solution_idx]
-            assert self.validate(solution)
-            assert np.count_nonzero(solution) == 81
-            for other_solution_idx in range(solution_idx + 1, len(self.solutions)):
-                assert not np.all(solution == self.solutions[other_solution_idx])
+        """Test all solutions."""
+        for idx, solution in enumerate(self.solutions):
+            assert self._is_array_valid_solution(solution)
+            for other_solution in self.solutions[idx + 1 :]:
+                assert not np.all(solution == other_solution)
 
     def validate(self, array) -> bool:
+        """Make sure no number is repeated in the same row, column or section."""
         result = True
         for idx in range(9):
             if len(set(array[idx]) - {0}) != np.count_nonzero(array[idx]):
@@ -367,6 +362,7 @@ class Table:
         return result
 
     def num_candidates(self) -> int:
+        """Get the number of candidates in the Sudoku puzzle."""
         result = 0
         for cell_candidates in self.candidates.flatten():
             if cell_candidates is not None:
@@ -374,6 +370,7 @@ class Table:
         return result
 
     def candidates_contain(self, number: int, x: int, y: int) -> bool:
+        """Check if the candidates contain the number."""
         return self.candidates[x, y] is not None and number in self.candidates[x, y]
 
     def print(self) -> None:
@@ -387,14 +384,14 @@ class Table:
     def compare_print(self) -> None:
         print("Original Sudoku" + "\t" * 3 + "Solved Sudoku")
         for original_array_row, array_row in zip(
-            self.__print_table_row(self.original_array, " "),
+            self.__print_table_row(self.given_sudoku, " "),
             self.__print_table_row(self.sudoku_array, " "),
         ):
             print(original_array_row, "\t", end="")
             print(array_row)
         print(
             "Filled Cells: \n"
-            + str(np.count_nonzero(self.original_array))
+            + str(np.count_nonzero(self.given_sudoku))
             + "\t" * 4
             + str(np.count_nonzero(self.sudoku_array)),
         )
@@ -417,11 +414,30 @@ class Table:
         current_section = self.get_section_by_idx(self.sudoku_array, idx).flatten()
         return [str(x if x != 0 else self.empty) for x in current_section]
 
-    def reset(self):
-        self.sudoku_array = self.original_array.copy()
+    def reset(self) -> None:
+        """Reset the Sudoku puzzle to the given Sudoku."""
+        self.sudoku_array = self.given_sudoku.copy()
         self.gen_candidates()
 
+    def reset_given_sudoku(self) -> None:
+        """Reset the given Sudoku to empty."""
+        self.given_sudoku = np.zeros((9, 9), dtype=np.int8)
+
+    def set_given_sudoku(self) -> None:
+        """Set the given Sudoku to the current Sudoku."""
+        self.given_sudoku = self.sudoku_array.copy()
+        self.reset()
+
+    def is_locked(self) -> bool:
+        """Check if the Sudoku puzzle is locked."""
+        return (self.given_sudoku != 0).any()
+
+    def is_empty(self) -> bool:
+        """Check if the Sudoku puzzle is empty."""
+        return np.count_nonzero(self.sudoku_array) == 0
+
     def replace_sudoku(self, new_sudoku: np.ndarray | None) -> None:
+        """Replace the Sudoku puzzle with a new Sudoku."""
         if new_sudoku is None:
             self.__init__()
             return
