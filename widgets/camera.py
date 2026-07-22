@@ -9,6 +9,7 @@ from kivy.graphics.texture import Texture
 from kivy.properties import BooleanProperty
 from kivy.uix.image import Image
 
+from app.utils import get_app
 from core.vision import draw_contours, find_sudoku_quad
 
 # Contour detection rate; preview still updates every frame using the last contour.
@@ -48,6 +49,7 @@ class CameraPreview(Image):
         """Start capture via the subclass backend."""
         self.stop_capture()
         self._open_capture()
+        self.toggle_capture_button(False)
 
     def stop_capture(self):
         """Release the backend and clear shared preview / detection state."""
@@ -76,9 +78,13 @@ class CameraPreview(Image):
 
     def _process_frame_rgba(self, frame_rgba):
         now = perf_counter()
+
+        self.toggle_capture_button(self.success_img is not None)
+
         if now >= self._next_detect_at:
             self._next_detect_at = now + _DETECT_INTERVAL_S
             self._last_contour = find_sudoku_quad(frame_rgba)
+
             if self._last_contour is not None:
                 self.success_img = frame_rgba
                 self.success_contour = self._last_contour
@@ -102,6 +108,11 @@ class CameraPreview(Image):
         if self.canvas is None:
             return
         self.canvas.ask_update()
+
+    def toggle_capture_button(self, enabled: bool) -> None:
+        camera_screen = get_app().sm.get_screen("camera")  # pyright: ignore[reportOptionalMemberAccess]
+        capture_button = camera_screen.ids.capture_sudoku_button
+        capture_button.disabled = not enabled
 
 
 def get_camera_preview_class() -> type[CameraPreview]:

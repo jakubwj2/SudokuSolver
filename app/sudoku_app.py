@@ -115,15 +115,15 @@ class SudokuApp(App):
         if self.table.is_solved():
             self.table.reset()
             instance.toggled = False
-        else:
+            return
+
+        if self.table.validate(self.table.sudoku_array):
             self.table.solve()
-            if len(self.table.solutions) != 1:
-                instance.toggled = False
-                print(
-                    "Invalid sudoku (solutions found: %d)" % len(self.table.solutions)
-                )
-            else:
-                instance.toggled = True
+
+        is_solved = self.table.is_solved()
+        instance.toggled = is_solved
+        if not is_solved:
+            instance.flash_error()
 
         self.refresh_sudoku()
 
